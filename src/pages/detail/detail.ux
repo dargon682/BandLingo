@@ -35,7 +35,7 @@
         
         <div class="action-section">
           <div class="action-btn {{ isFavorited ? 'favorited' : '' }}" onclick="addToFavorites">
-            <text static class="action-btn-text">{{ isFavorited ? '已收藏' : '收藏' }}</text>
+            <text static class="action-btn-text {{ isFavorited ? 'text-fav' : '' }}">{{ isFavorited ? '已收藏' : '收藏' }}</text>
           </div>
         </div>
         </div>
@@ -517,7 +517,7 @@ export default {
   color: #FFFFFF;
 }
 
-.action-btn.favorited .action-btn-text {
+.action-btn-text.text-fav {
   color: #000000;
 }
 

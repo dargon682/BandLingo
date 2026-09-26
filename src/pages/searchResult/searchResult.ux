@@ -917,13 +917,10 @@ export default {
   background-color: rgba(255, 159, 10, 0.14);
 }
 
-.filter-chip:last-child {
-  margin-right: 0;
-}
-
 .filter-reset {
   flex: none;
   width: 92px;
+  margin-right: 0; /* 替代不支持的 :last-child 伪类 */
 }
 
 .filter-chip-label {

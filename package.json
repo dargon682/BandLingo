@@ -1,6 +1,6 @@
 {
   "name": "bandlingo",
-  "version": "0.1.8-preview",
+  "version": "1.1-beta",
   "description": "腕上词典 Pro（组织内部版）——米环10离线词典",
   "private": true,
   "engines": {

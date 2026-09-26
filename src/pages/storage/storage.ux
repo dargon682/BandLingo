@@ -1,0 +1,677 @@
+<template>
+  <div class="storage-page">
+    <div class="header">
+      <div class="back-icon-container" onclick="goBack">
+        <text static class="back-icon">←</text>
+      </div>
+    </div>
+
+    <scroll class="content-scroll" scroll-y="true" if="{{ !showConfirm }}">
+      <div class="storage-info">
+        <text class="info-title">存储管理</text>
+      </div>
+
+      <text class="section-label">数据管理</text>
+
+      <div class="action-card" onclick="clearFavorites">
+        <div class="action-left">
+          <text class="action-name">清空收藏夹</text>
+          <text class="action-count">{{ favoriteCount }}个单词</text>
+        </div>
+        <text class="action-arrow">></text>
+      </div>
+
+      <div class="action-card" onclick="clearManualDict">
+        <div class="action-left">
+          <text class="action-name">清空手动词库</text>
+          <text class="action-count">{{ manualDictCount }}个单词</text>
+        </div>
+        <text class="action-arrow">></text>
+      </div>
+
+      <div class="action-card" onclick="clearAiDict">
+        <div class="action-left">
+          <text class="action-name">清空AI查词记录</text>
+          <text class="action-count">{{ aiDictCount }}条记录</text>
+        </div>
+        <text class="action-arrow">></text>
+      </div>
+
+      <div class="action-card action-danger" onclick="clearAllData">
+        <div class="action-left">
+          <text class="action-name danger-text">清除所有数据</text>
+          <text class="action-count">删除全部应用数据</text>
+        </div>
+        <text class="action-arrow danger-text">></text>
+      </div>
+
+      <div class="footer-space"></div>
+    </scroll>
+
+    <div class="confirm-overlay" if="{{ showConfirm }}">
+      <div class="confirm-dialog">
+        <text class="confirm-title">{{ confirmTitle }}</text>
+        <text class="confirm-message">{{ confirmMessage }}</text>
+        <div class="confirm-buttons">
+          <div class="confirm-btn cancel-btn" onclick="cancelAction">
+            <text static class="confirm-btn-text">取消</text>
+          </div>
+          <div class="confirm-btn ok-btn" onclick="confirmAction">
+            <text static class="confirm-btn-text">确定</text>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-container" if="{{ showToast }}">
+      <text class="toast-text {{ toastSuccess ? 'toast-success' : 'toast-error' }}">{{ toastMessage }}</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import storage from "../../storage"
+import router from "@system.router"
+
+export default {
+  data: {
+    favoriteCount: 0,
+    manualDictCount: 0,
+    aiDictCount: 0,
+    showConfirm: false,
+    confirmTitle: "",
+    confirmMessage: "",
+    pendingAction: "",
+    showToast: false,
+    toastMessage: "",
+    toastSuccess: true
+  },
+
+  onInit() {
+    this.loadCounts();
+  },
+
+  onShow() {
+    this.loadCounts();
+  },
+
+  loadCounts() {
+    storage.get({
+      key: 'favorites',
+      default: '',
+      success: (data) => {
+        if (data && data !== '') {
+          try {
+            const arr = JSON.parse(data);
+            this.favoriteCount = Array.isArray(arr) ? arr.length : 0;
+          } catch (e) {
+            this.favoriteCount = 0;
+          }
+        } else {
+          this.favoriteCount = 0;
+        }
+      },
+      fail: () => {
+        this.favoriteCount = 0;
+      }
+    });
+
+    storage.get({
+      key: 'manual_dictionary',
+      default: '',
+      success: (data) => {
+        if (data && data !== '') {
+          try {
+            const dict = JSON.parse(data);
+            this.manualDictCount = Object.keys(dict).length;
+          } catch (e) {
+            this.manualDictCount = 0;
+          }
+        } else {
+          this.manualDictCount = 0;
+        }
+      },
+      fail: () => {
+        this.manualDictCount = 0;
+      }
+    });
+
+    storage.get({
+      key: 'ai_dictionary',
+      default: '',
+      success: (data) => {
+        if (data && data !== '') {
+          try {
+            const dict = JSON.parse(data);
+            this.aiDictCount = Object.keys(dict).length;
+          } catch (e) {
+            this.aiDictCount = 0;
+          }
+        } else {
+          this.aiDictCount = 0;
+        }
+      },
+      fail: () => {
+        this.aiDictCount = 0;
+      }
+    });
+  },
+
+  showToastMessage(msg, success) {
+    this.toastMessage = msg;
+    this.toastSuccess = success;
+    this.showToast = true;
+    setTimeout(() => { this.showToast = false; }, 2000);
+  },
+
+  clearFavorites() {
+    if (this.favoriteCount === 0) {
+      this.showToastMessage("收藏夹为空", false);
+      return;
+    }
+    this.confirmTitle = "清空收藏夹";
+    this.confirmMessage = "确定清空收藏夹中的 " + this.favoriteCount + " 个单词？此操作不可恢复。";
+    this.pendingAction = "favorites";
+    this.showConfirm = true;
+  },
+
+  clearManualDict() {
+    if (this.manualDictCount === 0) {
+      this.showToastMessage("手动词库为空", false);
+      return;
+    }
+    this.confirmTitle = "清空手动词库";
+    this.confirmMessage = "确定清空手动添加的 " + this.manualDictCount + " 个单词？此操作不可恢复。";
+    this.pendingAction = "manualDict";
+    this.showConfirm = true;
+  },
+
+  clearAiDict() {
+    if (this.aiDictCount === 0) {
+      this.showToastMessage("AI查词记录为空", false);
+      return;
+    }
+    this.confirmTitle = "清空AI查词记录";
+    this.confirmMessage = "确定清空 " + this.aiDictCount + " 条AI查词记录？此操作不可恢复。";
+    this.pendingAction = "aiDict";
+    this.showConfirm = true;
+  },
+
+  clearAllData() {
+    this.confirmTitle = "清除所有数据";
+    this.confirmMessage = "将清除收藏夹、手动词库、AI查词记录等所有数据，此操作不可恢复。";
+    this.pendingAction = "all";
+    this.showConfirm = true;
+  },
+
+  cancelAction() {
+    this.showConfirm = false;
+    this.pendingAction = "";
+  },
+
+  confirmAction() {
+    const action = this.pendingAction;
+    this.showConfirm = false;
+    this.pendingAction = "";
+
+    if (action === "favorites") {
+      storage.delete({
+        key: 'favorites',
+        success: () => {
+          this.favoriteCount = 0;
+          this.showToastMessage("收藏夹已清空", true);
+        },
+        fail: () => { this.showToastMessage("清空失败", false); }
+      });
+    } else if (action === "manualDict") {
+      storage.delete({
+        key: 'manual_dictionary',
+        success: () => {
+          this.manualDictCount = 0;
+          this.showToastMessage("手动词库已清空", true);
+        },
+        fail: () => { this.showToastMessage("清空失败", false); }
+      });
+    } else if (action === "aiDict") {
+      storage.delete({
+        key: 'ai_dictionary',
+        success: () => {
+          this.aiDictCount = 0;
+          this.showToastMessage("AI查词记录已清空", true);
+        },
+        fail: () => { this.showToastMessage("清空失败", false); }
+      });
+    } else if (action === "all") {
+      storage.delete({
+        key: 'favorites',
+        success: () => {
+          this.favoriteCount = 0;
+        }
+      });
+      storage.delete({
+        key: 'manual_dictionary',
+        success: () => {
+          this.manualDictCount = 0;
+        }
+      });
+      storage.delete({
+        key: 'ai_dictionary',
+        success: () => {
+          this.aiDictCount = 0;
+        }
+      });
+      this.showToastMessage("所有数据已清除", true);
+    }
+  },
+
+  goBack() {
+    router.back();
+  }
+}
+</script>
+
+<style>
+.storage-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 70px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-icon-container {
+  width: 100px;
+  height: 42px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 21px;
+  border: 1px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 24px;
+  color: #FFFFFF;
+}
+
+.content-scroll {
+  flex: 1;
+  width: 100%;
+  flex-direction: column;
+  padding: 0 20px;
+}
+
+.storage-info {
+  margin-bottom: 16px;
+  justify-content: center;
+  align-items: center;
+}
+
+.info-title {
+  font-size: 28px;
+  color: #FFFFFF;
+  font-weight: bold;
+  text-align: center;
+}
+
+.section-label {
+  font-size: 16px;
+  color: #8E8E93;
+  margin-bottom: 10px;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+.action-card {
+  background-color: #1C1C1E;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 10px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.action-danger {
+  border: 1px solid #3A1A1A;
+}
+
+.action-left {
+  flex: 1;
+  flex-direction: column;
+  margin-right: 10px;
+}
+
+.action-name {
+  font-size: 18px;
+  color: #FFFFFF;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.danger-text {
+  color: #FF3B30;
+}
+
+.action-count {
+  font-size: 14px;
+  color: #8E8E93;
+}
+
+.action-arrow {
+  font-size: 22px;
+  color: #3A3A3C;
+  flex-shrink: 0;
+}
+
+.footer-space {
+  height: 20px;
+}
+
+.confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  justify-content: center;
+  align-items: center;
+}
+
+.confirm-dialog {
+  width: 85%;
+  background-color: #2C2C2E;
+  border-radius: 16px;
+  padding: 24px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.confirm-title {
+  font-size: 20px;
+  color: #FFFFFF;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.confirm-message {
+  font-size: 16px;
+  color: #8E8E93;
+  text-align: center;
+  margin-bottom: 24px;
+  lines: 3;
+}
+
+.confirm-buttons {
+  flex-direction: row;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.confirm-btn {
+  width: 45%;
+  height: 42px;
+  border-radius: 21px;
+  justify-content: center;
+  align-items: center;
+}
+
+.cancel-btn {
+  background-color: #3A3A3C;
+}
+
+.ok-btn {
+  background-color: #FF3B30;
+}
+
+.confirm-btn-text {
+  font-size: 16px;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 50px;
+  left: 0;
+  right: 0;
+  justify-content: center;
+  align-items: center;
+}
+
+.toast-text {
+  padding: 10px 24px;
+  border-radius: 18px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.toast-success {
+  background-color: #34C759;
+  color: #FFFFFF;
+}
+
+.toast-error {
+  background-color: #FF3B30;
+  color: #FFFFFF;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .storage-page {
+    width: 336px;
+    height: 480px;
+  }
+
+  .header {
+    height: 60px;
+  }
+
+  .back-icon-container {
+    width: 90px;
+    height: 38px;
+    border-radius: 19px;
+  }
+
+  .back-icon {
+    font-size: 22px;
+  }
+
+  .content-scroll {
+    padding: 0 16px;
+  }
+
+  .info-title {
+    font-size: 24px;
+  }
+
+  .section-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .action-card {
+    padding: 14px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+  }
+
+  .action-name {
+    font-size: 16px;
+  }
+
+  .action-count {
+    font-size: 13px;
+  }
+
+  .confirm-dialog {
+    padding: 20px;
+    border-radius: 14px;
+  }
+
+  .confirm-title {
+    font-size: 18px;
+  }
+
+  .confirm-message {
+    font-size: 15px;
+    margin-bottom: 20px;
+  }
+
+  .confirm-btn {
+    height: 40px;
+    border-radius: 20px;
+  }
+
+  .confirm-btn-text {
+    font-size: 15px;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .storage-page {
+    width: 432px;
+    height: 514px;
+  }
+
+  .header {
+    height: 80px;
+  }
+
+  .back-icon-container {
+    width: 120px;
+    height: 48px;
+    border-radius: 24px;
+  }
+
+  .back-icon {
+    font-size: 28px;
+  }
+
+  .content-scroll {
+    padding: 0 24px;
+  }
+
+  .info-title {
+    font-size: 32px;
+  }
+
+  .section-label {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  .action-card {
+    padding: 18px;
+    margin-bottom: 12px;
+    border-radius: 16px;
+  }
+
+  .action-name {
+    font-size: 20px;
+  }
+
+  .action-count {
+    font-size: 15px;
+  }
+
+  .confirm-dialog {
+    padding: 28px;
+    border-radius: 18px;
+  }
+
+  .confirm-title {
+    font-size: 22px;
+  }
+
+  .confirm-message {
+    font-size: 18px;
+    margin-bottom: 28px;
+  }
+
+  .confirm-btn {
+    height: 48px;
+    border-radius: 24px;
+  }
+
+  .confirm-btn-text {
+    font-size: 18px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-scroll {
+    padding: 0 24px;
+  }
+
+  .info-title {
+    font-size: 28px;
+  }
+
+  .section-label {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .action-card {
+    padding: 16px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+  }
+
+  .action-name {
+    font-size: 18px;
+  }
+
+  .action-count {
+    font-size: 15px;
+  }
+
+  .confirm-dialog {
+    padding: 24px;
+    border-radius: 16px;
+  }
+
+  .confirm-title {
+    font-size: 20px;
+  }
+
+  .confirm-message {
+    font-size: 16px;
+    margin-bottom: 24px;
+  }
+
+  .confirm-btn {
+    height: 44px;
+    border-radius: 22px;
+  }
+
+  .confirm-btn-text {
+    font-size: 16px;
+  }
+}
+</style>

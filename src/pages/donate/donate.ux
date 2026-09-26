@@ -1,0 +1,521 @@
+<template>
+  <div class="donate-page">
+    <div class="header">
+      <div class="back-icon-container" onclick="goBack">
+        <text static class="back-icon">←</text>
+      </div>
+    </div>
+
+    <scroll class="content-scroll" scroll-y="true">
+      <div class="thanks-card">
+        <text class="thanks-text">感谢支持 这将使得BandLingo变得更好</text>
+      </div>
+
+      <div class="qr-card">
+        <div class="qr-container">
+          <img src="/common/donateqr.jpeg" class="qr-code" />
+          <div class="download-btn">
+            <text static class="download-icon">↓</text>
+          </div>
+        </div>
+      </div>
+
+      <div class="instruction-card">
+        <text class="instruction-text">捐赠金额不限 心意最重要 扫码后请保留凭证</text>
+      </div>
+
+      <div class="contact-card">
+        <text class="contact-text">QQ群：1077313539</text>
+      </div>
+
+      <div class="donor-section">
+        <text class="donor-title">感谢以下用户的捐赠支持</text>
+        <div class="donor-card">
+          <div class="donor-item">
+            <text class="donor-name">来往哀</text>
+          </div>
+          <div class="donor-item">
+            <text class="donor-name">芝士缅因兽</text>
+          </div>
+          <div class="donor-item">
+            <text class="donor-name">6.</text>
+          </div>
+          <div class="donor-item no-border">
+            <text class="donor-name">Charlie</text>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-space"></div>
+    </scroll>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+
+export default {
+  data: {
+    appName: "BandLingo"
+  },
+
+  onInit() {
+    console.log('捐赠页面初始化');
+  },
+
+  goBack() {
+    router.back();
+  }
+}
+</script>
+
+<style>
+.donate-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 80px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+}
+
+.back-icon-container {
+  width: 120px;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 25px;
+  border: 2px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 30px;
+  color: #FFFFFF;
+}
+
+.content-scroll {
+  flex: 1;
+  width: 100%;
+  flex-direction: column;
+  padding: 0 20px 20px 20px;
+}
+
+.thanks-card {
+  width: 100%;
+  background-color: #2D2D2D;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.thanks-text {
+  font-size: 14px;
+  color: #FFFFFF;
+  text-align: center;
+}
+
+.qr-card {
+  width: 100%;
+  background-color: #2D2D2D;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.qr-container {
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.qr-code {
+  width: 180px;
+  height: 180px;
+  background-color: #FFFFFF;
+  border-radius: 8px;
+}
+
+.download-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background-color: #FFD700;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  justify-content: center;
+  align-items: center;
+}
+
+.download-icon {
+  font-size: 16px;
+  color: #000000;
+}
+
+.instruction-card {
+  width: 100%;
+  background-color: #2D2D2D;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.instruction-text {
+  font-size: 12px;
+  color: #FFFFFF;
+  text-align: center;
+}
+
+.contact-card {
+  width: 100%;
+  background-color: #2D2D2D;
+  border-radius: 12px;
+  padding: 16px;
+  justify-content: center;
+  align-items: center;
+}
+
+.contact-text {
+  font-size: 14px;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.donor-section {
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.donor-title {
+  font-size: 16px;
+  color: #FFFFFF;
+  margin-bottom: 10px;
+}
+
+.donor-card {
+  width: 100%;
+  background-color: #2D2D2D;
+  border-radius: 12px;
+  padding: 14px;
+  flex-direction: column;
+}
+
+.donor-item {
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #3A3A3C;
+}
+
+.no-border {
+  border-bottom: none;
+}
+
+.donor-name {
+  font-size: 16px;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.footer-space {
+  height: 20px;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .donate-page {
+    width: 336px;
+    height: 480px;
+  }
+
+  .header {
+    height: 70px;
+    padding: 0 18px;
+  }
+
+  .back-icon-container {
+    width: 100px;
+    height: 45px;
+    border-radius: 22px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-scroll {
+    padding: 0 16px 16px 16px;
+  }
+
+  .thanks-card {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .thanks-text {
+    font-size: 12px;
+  }
+
+  .qr-card {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .qr-code {
+    width: 150px;
+    height: 150px;
+  }
+
+  .download-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+  .download-icon {
+    font-size: 14px;
+  }
+
+  .instruction-card {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .instruction-text {
+    font-size: 11px;
+  }
+
+  .contact-card {
+    padding: 12px;
+  }
+
+  .contact-text {
+    font-size: 12px;
+  }
+
+  .donor-section {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .donor-title {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .donor-card {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .donor-item {
+    width: 100%;
+    padding: 8px 0;
+  }
+
+  .donor-name {
+    font-size: 14px;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .donate-page {
+    width: 432px;
+    height: 514px;
+  }
+
+  .header {
+    height: 90px;
+    padding: 0 24px;
+  }
+
+  .back-icon-container {
+    width: 140px;
+    height: 55px;
+    border-radius: 28px;
+  }
+
+  .back-icon {
+    font-size: 34px;
+  }
+
+  .content-scroll {
+    padding: 0 24px 24px 24px;
+  }
+
+  .thanks-card {
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+
+  .thanks-text {
+    font-size: 16px;
+  }
+
+  .qr-card {
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+
+  .qr-code {
+    width: 200px;
+    height: 200px;
+  }
+
+  .download-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .download-icon {
+    font-size: 18px;
+  }
+
+  .instruction-card {
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+
+  .instruction-text {
+    font-size: 14px;
+  }
+
+  .contact-card {
+    padding: 18px;
+  }
+
+  .contact-text {
+    font-size: 16px;
+  }
+
+  .donor-section {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .donor-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  .donor-card {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .donor-item {
+    width: 100%;
+    padding: 12px 0;
+  }
+
+  .donor-name {
+    font-size: 18px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+    padding: 0 20px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-scroll {
+    padding: 0 18px 18px 18px;
+  }
+
+  .thanks-card {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .thanks-text {
+    font-size: 14px;
+  }
+
+  .qr-card {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .qr-code {
+    width: 170px;
+    height: 170px;
+  }
+
+  .download-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .download-icon {
+    font-size: 16px;
+  }
+
+  .instruction-card {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .instruction-text {
+    font-size: 13px;
+  }
+
+  .contact-card {
+    padding: 14px;
+  }
+
+  .contact-text {
+    font-size: 14px;
+  }
+
+  .donor-section {
+    margin-top: 12px;
+  }
+
+  .donor-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .donor-card {
+    padding: 14px;
+  }
+
+  .donor-item {
+    padding: 10px 0;
+  }
+
+  .donor-name {
+    font-size: 16px;
+  }
+}
+</style>

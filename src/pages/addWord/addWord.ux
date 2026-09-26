@@ -1,0 +1,676 @@
+<import name="inputmethod" src="../../components/InputMethod/InputMethod"></import>
+
+<template>
+  <div class="add-word-page">
+    <!-- 内容区域（键盘隐藏时显示） -->
+    <div class="content-wrapper" if="{{ !keyboardVisible }}">
+      <div class="header">
+        <div class="back-icon-container" onclick="goBack">
+          <text static class="back-icon">←</text>
+        </div>
+      </div>
+
+      <div class="content-container">
+        <div class="form-list">
+          <div class="title-container">
+            <text static class="page-title">添加单词</text>
+          </div>
+
+          <!-- 英文输入 -->
+          <div class="input-group">
+            <text static class="input-label">英文</text>
+            <div class="input-field" onclick="focusEnglish">
+              <text class="input-text {{ englishWord ? 'has-content' : '' }}">{{ englishWord || '点击输入英文单词' }}</text>
+            </div>
+          </div>
+
+          <!-- 中文解释输入 -->
+          <div class="input-group">
+            <text static class="input-label">中文解释</text>
+            <div class="input-field" onclick="focusChinese">
+              <text class="input-text {{ chineseDefinition ? 'has-content' : '' }}">{{ chineseDefinition || '点击输入中文解释' }}</text>
+            </div>
+          </div>
+
+          <!-- 保存按钮 -->
+          <div class="save-btn-wrapper">
+            <div class="save-btn {{ canSave ? '' : 'disabled' }}" onclick="saveWord">
+              <text static class="save-btn-text">保存</text>
+            </div>
+          </div>
+
+          <!-- 提示信息 -->
+          <div class="message-container" if="{{ showMessage }}">
+            <text class="message-text {{ messageSuccess ? 'success' : 'error' }}">{{ messageText }}</text>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 输入区域（键盘显示时显示） -->
+    <div class="input-wrapper" if="{{ keyboardVisible }}">
+      <div class="input-header">
+        <text static class="input-title">{{ activeField === 'english' ? '输入英文' : '输入中文解释' }}</text>
+        <text class="input-display">{{ activeField === 'english' ? (englishWord || '请输入...') : (chineseDefinition || '请输入...') }}</text>
+      </div>
+      
+      <div class="confirm-btn-row">
+        <div class="confirm-btn" onclick="confirmInput">
+          <text static class="confirm-btn-text">确定</text>
+        </div>
+      </div>
+
+      <div class="keyboard-container">
+        <inputmethod 
+          hide="{{ false }}" 
+          maxlength="50"
+          onkeydown="onKeyDown"
+          oncomplete="onInputComplete"
+          ondelete="onDelete"
+          onhide="hideKeyboard"
+        ></inputmethod>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import storage from "../../storage"
+
+export default {
+  data: {
+    englishWord: '',
+    chineseDefinition: '',
+    activeField: '',
+    keyboardVisible: false,
+    showMessage: false,
+    messageText: '',
+    messageSuccess: true
+  },
+
+  computed: {
+    canSave() {
+      return this.englishWord.trim() && this.chineseDefinition.trim();
+    }
+  },
+
+  onInit() {
+    console.log('添加单词页面初始化');
+  },
+
+  focusEnglish() {
+    this.activeField = 'english';
+    this.keyboardVisible = true;
+  },
+
+  focusChinese() {
+    this.activeField = 'chinese';
+    this.keyboardVisible = true;
+  },
+
+  hideKeyboard() {
+    this.keyboardVisible = false;
+    this.activeField = '';
+  },
+
+  confirmInput() {
+    this.keyboardVisible = false;
+    this.activeField = '';
+  },
+
+  onInputComplete(e) {
+    const content = e.detail ? e.detail.content : e.content;
+    if (this.activeField === 'english') {
+      this.englishWord += content;
+    } else if (this.activeField === 'chinese') {
+      this.chineseDefinition += content;
+    }
+  },
+
+  onKeyDown(e) {
+    const content = e.detail ? e.detail.content : e.content;
+    if (this.activeField === 'english') {
+      this.englishWord += content;
+    } else if (this.activeField === 'chinese') {
+      this.chineseDefinition += content;
+    }
+  },
+
+  onDelete() {
+    if (this.activeField === 'english') {
+      this.englishWord = this.englishWord.slice(0, -1);
+    } else if (this.activeField === 'chinese') {
+      this.chineseDefinition = this.chineseDefinition.slice(0, -1);
+    }
+  },
+
+  showMessageForDuration(text, success) {
+    this.messageText = text;
+    this.messageSuccess = success;
+    this.showMessage = true;
+
+    setTimeout(() => {
+      this.showMessage = false;
+    }, 2000);
+  },
+
+  saveWord() {
+    if (!this.canSave) {
+      this.showMessageForDuration('请填写完整信息', false);
+      return;
+    }
+
+    const word = this.englishWord.trim().toLowerCase();
+    const definition = this.chineseDefinition.trim();
+
+    // 获取现有手动词库
+    storage.get({
+      key: 'manual_dictionary',
+      default: '',
+      success: (savedData) => {
+        let manualDictionary = {};
+
+        if (savedData) {
+          try {
+            manualDictionary = JSON.parse(savedData);
+          } catch (e) {
+            console.error('解析手动词库失败:', e);
+            manualDictionary = {};
+          }
+        }
+
+        // 添加新单词
+        manualDictionary[word] = definition;
+
+        // 保存回存储
+        storage.set({
+          key: 'manual_dictionary',
+          value: JSON.stringify(manualDictionary),
+          success: () => {
+            console.log('手动词库已保存:', word);
+            this.showMessageForDuration('保存成功！', true);
+
+            // 清空输入
+            this.englishWord = '';
+            this.chineseDefinition = '';
+            this.keyboardVisible = false;
+            this.activeField = '';
+          },
+          fail: (err) => {
+            console.error('保存手动词库失败:', err);
+            this.showMessageForDuration('保存失败，请重试', false);
+          }
+        });
+      },
+      fail: (err) => {
+        console.error('读取手动词库失败:', err);
+        // 创建新词典
+        const manualDictionary = {};
+        manualDictionary[word] = definition;
+
+        storage.set({
+          key: 'manual_dictionary',
+          value: JSON.stringify(manualDictionary),
+          success: () => {
+            console.log('手动词库已创建并保存:', word);
+            this.showMessageForDuration('保存成功！', true);
+
+            this.englishWord = '';
+            this.chineseDefinition = '';
+            this.keyboardVisible = false;
+            this.activeField = '';
+          },
+          fail: (err) => {
+            console.error('创建手动词库失败:', err);
+            this.showMessageForDuration('保存失败，请重试', false);
+          }
+        });
+      }
+    });
+  },
+
+  goBack() {
+    router.back();
+  }
+}
+</script>
+
+<style>
+.add-word-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+/* 内容区域样式 */
+.content-wrapper {
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 80px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+}
+
+.back-icon-container {
+  width: 120px;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 25px;
+  border: 2px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 30px;
+  color: #FFFFFF;
+}
+
+.content-container {
+  flex: 1;
+  width: 100%;
+  padding: 0 20px 20px 20px;
+}
+
+.form-list {
+  flex: 1;
+  width: 100%;
+  padding: 0 24px;
+  flex-direction: column;
+  overflow: scroll;
+  scrollable: true;
+  justify-content: center;
+}
+
+.title-container {
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.page-title {
+  font-size: 22px;
+  color: #3498DB;
+  font-weight: 600;
+}
+
+.input-group {
+  margin-bottom: 24px;
+  flex-direction: column;
+}
+
+.input-label {
+  font-size: 16px;
+  color: #8E8E93;
+  margin-bottom: 10px;
+}
+
+.input-field {
+  width: 100%;
+  min-height: 56px;
+  background-color: #1C1C1E;
+  border-radius: 12px;
+  padding: 14px 18px;
+  border: 2px solid #2C2C2E;
+  justify-content: center;
+}
+
+.input-text {
+  font-size: 18px;
+  color: #8E8E93;
+}
+
+.input-text.has-content {
+  color: #FFFFFF;
+}
+
+.save-btn-wrapper {
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.save-btn {
+  width: 70%;
+  height: 56px;
+  background-color: #1C1C1E;
+  border-radius: 20px;
+  justify-content: center;
+  align-items: center;
+}
+
+.save-btn.disabled {
+  background-color: #3A3A3C;
+}
+
+.save-btn-text {
+  font-size: 16px;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.message-container {
+  width: 100%;
+  padding: 12px;
+  margin-top: 20px;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.message-text {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.message-text.success {
+  color: #34C759;
+}
+
+.message-text.error {
+  color: #FF3B30;
+}
+
+/* 输入区域样式 */
+.input-wrapper {
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.input-header {
+  width: 100%;
+  padding: 20px 24px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.input-title {
+  font-size: 18px;
+  color: #3498DB;
+  margin-bottom: 10px;
+}
+
+.input-display {
+  font-size: 28px;
+  color: #FFFFFF;
+  text-align: center;
+  lines: 3;
+}
+
+.confirm-btn-row {
+  width: 100%;
+  flex-direction: row;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.confirm-btn {
+  width: 200px;
+  height: 50px;
+  border-radius: 25px;
+  background-color: #3498DB;
+  justify-content: center;
+  align-items: center;
+}
+
+.confirm-btn-text {
+  font-size: 18px;
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.keyboard-container {
+  width: 100%;
+  flex: 1;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .add-word-page {
+    width: 336px;
+    height: 480px;
+  }
+
+  .header {
+    height: 70px;
+    padding: 0 18px;
+  }
+
+  .back-icon-container {
+    width: 100px;
+    height: 45px;
+    border-radius: 22px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-container {
+    padding: 0 12px 12px 12px;
+  }
+
+  .form-list {
+    padding: 0 18px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .input-group {
+    margin-bottom: 20px;
+  }
+
+  .input-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .input-field {
+    min-height: 48px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  .input-text {
+    font-size: 16px;
+  }
+
+  .save-btn {
+    height: 48px;
+    border-radius: 18px;
+  }
+
+  .save-btn-text {
+    font-size: 14px;
+  }
+
+  .message-text {
+    font-size: 14px;
+  }
+
+  .input-header {
+    padding: 15px 18px;
+  }
+
+  .input-title {
+    font-size: 16px;
+  }
+
+  .input-display {
+    font-size: 24px;
+  }
+
+  .confirm-btn {
+    width: 160px;
+    height: 40px;
+  }
+
+  .confirm-btn-text {
+    font-size: 16px;
+  }
+
+  .keyboard-container {
+    height: 260px;
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .add-word-page {
+    width: 432px;
+    height: 514px;
+  }
+
+  .header {
+    height: 90px;
+    padding: 0 24px;
+  }
+
+  .back-icon-container {
+    width: 140px;
+    height: 55px;
+    border-radius: 28px;
+  }
+
+  .back-icon {
+    font-size: 34px;
+  }
+
+  .content-container {
+    padding: 0 24px 24px 24px;
+  }
+
+  .form-list {
+    padding: 0 24px;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .input-group {
+    margin-bottom: 28px;
+  }
+
+  .input-label {
+    font-size: 17px;
+    margin-bottom: 12px;
+  }
+
+  .input-field {
+    min-height: 60px;
+    padding: 16px 20px;
+    border-radius: 14px;
+  }
+
+  .input-text {
+    font-size: 20px;
+  }
+
+  .save-btn {
+    height: 60px;
+    border-radius: 24px;
+  }
+
+  .save-btn-text {
+    font-size: 18px;
+  }
+
+  .keyboard-container {
+    height: 320px;
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+    padding: 0 20px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-container {
+    padding: 0 18px 18px 18px;
+  }
+
+  .form-list {
+    padding: 0 20px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .input-group {
+    margin-bottom: 22px;
+  }
+
+  .input-label {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .input-field {
+    min-height: 55px;
+    padding: 14px 16px;
+    border-radius: 12px;
+  }
+
+  .input-text {
+    font-size: 18px;
+  }
+
+  .save-btn-wrapper {
+    margin-top: 18px;
+  }
+
+  .save-btn {
+    height: 55px;
+    border-radius: 20px;
+  }
+
+  .save-btn-text {
+    font-size: 16px;
+  }
+
+  .keyboard-container {
+    height: 300px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+  }
+}
+</style>

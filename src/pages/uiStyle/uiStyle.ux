@@ -1,0 +1,468 @@
+<template>
+  <div class="ui-style-page">
+    <div class="header">
+      <div class="back-icon-container" onclick="goBack">
+        <text static class="back-icon">←</text>
+      </div>
+    </div>
+    
+    <div class="content-container">
+      <div class="title-container">
+        <text static class="page-title">UI样式选择</text>
+      </div>
+      
+      <div class="style-list">
+        <div class="style-item {{ currentStyle === 'classic' ? 'selected' : '' }}" onclick="selectStyle('classic')">
+          <div class="style-preview classic-preview">
+            <div class="preview-item classic-item">
+              <text class="preview-word">hello</text>
+              <text class="preview-def">你好</text>
+            </div>
+          </div>
+          <div class="style-info">
+            <text class="style-name">经典样式</text>
+            <text class="style-desc">简洁列表 流畅必备</text>
+          </div>
+          <div class="check-icon" if="{{ currentStyle === 'classic' }}">
+            <text static>✓</text>
+          </div>
+        </div>
+        
+        <div class="style-item {{ currentStyle === 'colorful' ? 'selected' : '' }}" onclick="selectStyle('colorful')">
+          <div class="style-preview colorful-preview">
+            <div class="preview-item colorful-item colorful-1">
+              <text class="preview-word">hello</text>
+              <text class="preview-def">你好</text>
+            </div>
+          </div>
+          <div class="style-info">
+            <text class="style-name">彩色小卡片</text>
+            <text class="style-desc">多彩卡片 颜色丰富</text>
+          </div>
+          <div class="check-icon" if="{{ currentStyle === 'colorful' }}">
+            <text static>✓</text>
+          </div>
+        </div>
+        
+        <div class="style-item {{ currentStyle === 'gradient' ? 'selected' : '' }}" onclick="selectStyle('gradient')">
+          <div class="style-preview gradient-preview">
+            <div class="preview-item gradient-item">
+              <text class="preview-word">hello</text>
+              <text class="preview-def">你好</text>
+            </div>
+          </div>
+          <div class="style-info">
+            <text class="style-name">渐变小卡片</text>
+            <text class="style-desc">渐变背景 视觉焕新</text>
+          </div>
+          <div class="check-icon" if="{{ currentStyle === 'gradient' }}">
+            <text static>✓</text>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import storage from "../../storage"
+
+export default {
+  data: {
+    currentStyle: 'classic'
+  },
+
+  onInit() {
+    console.log('UI样式页面初始化');
+    this.loadStyleSetting();
+  },
+
+  onShow() {
+    this.loadStyleSetting();
+  },
+
+  loadStyleSetting() {
+    storage.get({
+      key: 'ui_style',
+      default: 'classic',
+      success: (data) => {
+        this.currentStyle = data || 'classic';
+        console.log('加载UI样式:', this.currentStyle);
+      },
+      fail: () => {
+        this.currentStyle = 'classic';
+      }
+    });
+  },
+
+  selectStyle(style) {
+    if (this.currentStyle === style) {
+      return;
+    }
+    
+    this.currentStyle = style;
+    
+    storage.set({
+      key: 'ui_style',
+      value: style,
+      success: () => {
+        console.log('UI样式已保存:', style);
+      },
+      fail: (err) => {
+        console.error('保存UI样式失败:', err);
+      }
+    });
+  },
+
+  goBack() {
+    router.back();
+  }
+}
+</script>
+
+<style>
+.ui-style-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 80px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+}
+
+.back-icon-container {
+  width: 120px;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 25px;
+  border: 2px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 30px;
+  color: #FFFFFF;
+}
+
+.content-container {
+  flex: 1;
+  width: 100%;
+  padding: 0 24px 24px 24px;
+  flex-direction: column;
+}
+
+.title-container {
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 22px;
+  color: #3498DB;
+  font-weight: 600;
+}
+
+.style-list {
+  flex: 1;
+  flex-direction: column;
+}
+
+.style-item {
+  width: 100%;
+  background-color: #1C1C1E;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  padding: 16px;
+  border: 2px solid #2C2C2E;
+  flex-direction: row;
+  align-items: center;
+}
+
+.style-item.selected {
+  border-color: #3498DB;
+  background-color: #1A2A3A;
+}
+
+.style-preview {
+  width: 80px;
+  height: 60px;
+  border-radius: 8px;
+  margin-right: 16px;
+  justify-content: center;
+  align-items: center;
+}
+
+.classic-preview {
+  background-color: #2D2D2D;
+  border: 1px solid #444;
+}
+
+.colorful-preview {
+  background-color: #4A3828;
+}
+
+.gradient-preview {
+  background: linear-gradient(135deg, #1E3A5F 0%, #0D1B2A 100%);
+}
+
+.preview-item {
+  width: 70px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.classic-item {
+  background-color: transparent;
+}
+
+.colorful-item {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.gradient-item {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.preview-word {
+  font-size: 12px;
+  color: #FFFFFF;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.preview-def {
+  font-size: 10px;
+  color: #AAAAAA;
+}
+
+.style-info {
+  flex: 1;
+  flex-direction: column;
+}
+
+.style-name {
+  font-size: 16px;
+  color: #FFFFFF;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.style-desc {
+  font-size: 12px;
+  color: #8E8E93;
+}
+
+.check-icon {
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+  align-items: center;
+}
+
+.check-icon text {
+  font-size: 18px;
+  color: #3498DB;
+  font-weight: bold;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .ui-style-page {
+    width: 336px;
+    height: 480px;
+  }
+  
+  .header {
+    height: 70px;
+    padding: 0 18px;
+  }
+  
+  .back-icon-container {
+    width: 100px;
+    height: 45px;
+    border-radius: 22px;
+  }
+  
+  .back-icon {
+    font-size: 26px;
+  }
+  
+  .content-container {
+    padding: 0 18px 20px 18px;
+  }
+  
+  .page-title {
+    font-size: 20px;
+  }
+  
+  .style-item {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .style-preview {
+    width: 70px;
+    height: 50px;
+    margin-right: 12px;
+  }
+  
+  .preview-item {
+    width: 60px;
+    padding: 4px 6px;
+  }
+  
+  .preview-word {
+    font-size: 10px;
+  }
+  
+  .preview-def {
+    font-size: 8px;
+  }
+  
+  .style-name {
+    font-size: 14px;
+  }
+  
+  .style-desc {
+    font-size: 11px;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .ui-style-page {
+    width: 432px;
+    height: 514px;
+  }
+  
+  .header {
+    height: 90px;
+    padding: 0 24px;
+  }
+  
+  .back-icon-container {
+    width: 140px;
+    height: 55px;
+    border-radius: 28px;
+  }
+  
+  .back-icon {
+    font-size: 34px;
+  }
+  
+  .content-container {
+    padding: 0 24px 24px 24px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
+  
+  .style-item {
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  
+  .style-preview {
+    width: 90px;
+    height: 70px;
+    margin-right: 18px;
+  }
+  
+  .preview-item {
+    width: 80px;
+    padding: 8px 10px;
+  }
+  
+  .preview-word {
+    font-size: 14px;
+  }
+  
+  .preview-def {
+    font-size: 12px;
+  }
+  
+  .style-name {
+    font-size: 18px;
+  }
+  
+  .style-desc {
+    font-size: 13px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+    padding: 0 20px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-container {
+    padding: 0 20px 20px 20px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .style-item {
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .style-preview {
+    width: 75px;
+    height: 55px;
+    margin-right: 14px;
+    border-radius: 8px;
+  }
+
+  .preview-item {
+    width: 65px;
+    padding: 5px 7px;
+    border-radius: 4px;
+  }
+
+  .preview-word {
+    font-size: 12px;
+  }
+
+  .preview-def {
+    font-size: 10px;
+  }
+
+  .style-name {
+    font-size: 16px;
+  }
+
+  .style-desc {
+    font-size: 13px;
+  }
+}
+</style>

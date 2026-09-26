@@ -1,0 +1,828 @@
+<!-- InputMethod.ux - Robust Version for 432*514 -->
+<template>
+  <div class="keyboard-root">
+    <div class="keyboard-main">
+      <div class="keyboard-content">
+        <!-- 顶部功能/候选栏 -->
+        <div class="top-bar">
+          <!-- 左侧按钮组：语言切换 -->
+          <div class="side-btn-group">
+            <img static src="./assets/horizontal/cn.png" class="icon-btn" @click="onBtnClick('lang')" if="{{!numFlag && lang==='cn'}}" />
+            <img static src="./assets/horizontal/en.png" class="icon-btn" @click="onBtnClick('lang')" if="{{!numFlag && lang==='en'}}" />
+          </div>
+
+          <!-- 中间区域：候选词 或 英文键盘功能键 -->
+          <div if="{{lang === 'cn' && !numFlag}}" class="candidate-area">
+            <scroll id="cvalWaiting" scroll-x="{{true}}" class="candidate-scroll">
+              <div static class="candidate-list">
+                <text class="candidate-text-pinyin" @click="pushCval">{{cval}}</text>
+                <text for="{{(idx, item) in resultList}}" class="candidate-text" @click="onRsSelect(item)">{{item}}</text>
+              </div>
+            </scroll>
+            <img static if="{{resultList.length > 0}}" class="down-icon" src="./assets/horizontal/down2.png" @click="onBtnClick('down')" />
+          </div>
+          
+          <div else class="func-area">
+            <img static src="./assets/horizontal/bigA.png" class="func-btn-img" @click="onBtnClick('switchLow')" if="{{upperFlag && lang==='en'&& !numFlag}}" />
+            <img static src="./assets/horizontal/a.png" class="func-btn-img" @click="onBtnClick('switchUpper')" if="{{!upperFlag && lang==='en'&& !numFlag}}" />
+            <img static src="./assets/horizontal/123.png" class="func-btn-img-wide" @click="onBtnClick('switchNum')" if="{{!numFlag && lang==='en'}}" />
+            <img static src="./assets/horizontal/back2.png" class="func-btn-img-extra-wide" @click="onBtnClick('switchCn')" if="{{numFlag}}" />
+          </div>
+
+          <!-- 右侧按钮组：删除和返回 -->
+          <div class="side-btn-group">
+            <img static if="{{!numFlag}}" src="./assets/horizontal/del.png" class="icon-btn" @click="onBtnClick('D')" />
+            <img static else src="./assets/horizontal/del2.png" class="icon-btn" @click="onBtnClick('D')" />
+            
+            <div class="back-btn" @click="onBtnClick('back')">
+              <text class="back-icon">×</text>
+            </div>
+          </div>
+        </div>
+
+        <!-- 键盘主体区域 -->
+        <div class="keys-area">
+          <scroll id="keyboardRect" scroll-x="{{true}}" onscroll="handleRectScroll">
+            <div if="{{!numFlag}}" class="keys-container">
+              <div static class="key-row row-1">
+                <text class="key-btn" for="{{item in keys['full'][0]}}" @click="onSelect(item)">{{item}}</text>
+              </div>
+              <div static class="key-row row-2">
+                <text class="key-btn" for="{{item in keys['full'][1]}}" @click="onSelect(item)">{{item}}</text>
+              </div>
+              <div static class="key-row row-3">
+                <text class="key-btn" for="{{item in keys['full'][2]}}" @click="onSelect(item)">{{item}}</text>
+                <img static src="./assets/horizontal/space.png" class="space-btn" @click="onBtnClick('space')" />
+              </div>
+            </div>
+            <div else class="keys-container">
+              <div static class="key-row row-1">
+                <text class="key-btn" for="{{item in keys['sign'][0]}}" @click="onSelect(item)">{{item}}</text>
+              </div>
+              <div static class="key-row row-2">
+                <text class="key-btn" for="{{item in keys['sign'][1]}}" @click="onSelect(item)">{{item}}</text>
+              </div>
+              <div static class="key-row row-3">
+                <text class="key-btn" for="{{item in keys['sign'][2]}}" @click="onSelect(item)">{{item}}</text>
+              </div>
+            </div>
+          </scroll>
+          <progress percent="{{scrollPercent}}" class="scroll-progress"></progress>
+        </div>
+
+        <!-- 展开的候选词列表 (全屏覆盖) -->
+        <div class="full-candidate-view" if="{{downFlag==='down'}}">
+          <div static class="full-candidate-box">
+            <list static class="full-candidate-list">
+              <list-item type="waitingRowsRect" class="full-candidate-item" for="{{itemArray in resultList2}}">
+                <div class="candidate-row">
+                  <text class="candidate-grid-text" for="{{item in itemArray}}" @click="onRsSelect(item)">{{item}}</text>
+                </div>
+              </list-item>
+            </list>
+          </div>
+          <img static class="up-icon" src="./assets/horizontal/up2.png" @click="onBtnClick('down')" />
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import vibrator from "@system.vibrator";
+import { SimpleInputMethod } from "./assets/dicUtil.js";
+
+export default {
+  props: {
+    hide: { default: true },
+    maxlength: { default: 5 },
+    vibratemode: { default: "short" },
+  },
+  data: {
+    cval: "",
+    resultList: [],
+    resultList2: [],
+    downFlag: "",
+    lang: "cn",
+    numFlag: false,
+    upperFlag: false,
+    scrollPercent: 0,
+    keys: {
+      full: [
+        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+        ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+        ["Z", "X", "C", "V", "B", "N", "M"],
+      ],
+      sign: [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["~", "!", "@", "#", "%", "“", "”", "*", "?", "/"],
+        ["(", ")", "-", "_", ":", ";", "，", "。", "."],
+      ],
+    },
+  },
+  
+  onInit() {
+    console.log('InputMethod: onInit');
+  },
+
+  onVibrate() {
+    if (this.vibratemode) {
+      vibrator.vibrate({ mode: this.vibratemode });
+    }
+  },
+
+  onRsSelect(txt) {
+    console.log('InputMethod: onRsSelect', txt);
+    this.onVibrate();
+    this.cval = "";
+    this.$emit("complete", { content: txt });
+    this.resultList = [];
+    this.resultList2 = [];
+    this.downFlag = "";
+  },
+
+  onBtnClick(sign) {
+    this.onVibrate();
+    switch (sign) {
+      case "lang":
+        this.lang = (this.lang === "cn" ? "en" : "cn");
+        this.cval = "";
+        this.resultList = [];
+        this.resultList2 = [];
+        break;
+      case "D":
+        if (this.cval.length > 0) {
+          this.cval = this.cval.substr(0, this.cval.length - 1);
+          this.updateCandidates();
+        } else {
+          this.$emit("delete", {});
+        }
+        break;
+      case "space":
+        this.$emit("complete", { content: " " });
+        break;
+      case "down":
+        this.downFlag = (this.downFlag === "down" ? "" : "down");
+        break;
+      case "switchNum":
+        this.numFlag = true;
+        this.cval = "";
+        this.resultList = [];
+        this.resultList2 = [];
+        break;
+      case "switchCn":
+        this.numFlag = false;
+        break;
+      case "switchUpper":
+        this.upperFlag = true;
+        break;
+      case "switchLow":
+        this.upperFlag = false;
+        break;
+      case "back":
+        this.$emit('hide');
+        break;
+    }
+  },
+
+  updateCandidates() {
+    if (this.lang === 'cn' && this.cval) {
+      let hanzi = SimpleInputMethod.getHanzi(this.cval);
+      if (hanzi && hanzi[0]) {
+        // 原地更新resultList，避免重新分配内存
+        this.resultList.length = 0;
+        for (let i = 0; i < hanzi[0].length; i++) {
+          this.resultList.push(hanzi[0][i]);
+        }
+        
+        // 原地更新resultList2，避免重新分配内存
+        this.resultList2.length = 0;
+        let array = [];
+        const max = 5;
+        for (let i = 0; i < this.resultList.length; i++) {
+          array.push(this.resultList[i]);
+          if (array.length === max) {
+            this.resultList2.push(array);
+            array = [];
+          }
+        }
+        if (array.length > 0) {
+          this.resultList2.push(array);
+        }
+      } else {
+        // 原地清空数组
+        this.resultList.length = 0;
+        this.resultList2.length = 0;
+      }
+    } else {
+      // 原地清空数组
+      this.resultList.length = 0;
+      this.resultList2.length = 0;
+    }
+  },
+
+  onSelect(num) {
+    console.log('InputMethod: onSelect', num);
+    this.onVibrate();
+    
+    if (this.lang === "cn" && !this.numFlag) {
+      this.cval += num.toLowerCase();
+      this.updateCandidates();
+    } else if (this.lang === "en" && !this.numFlag) {
+      let char = this.upperFlag ? num.toUpperCase() : num.toLowerCase();
+      this.$emit("keydown", { content: char });
+    } else {
+      this.$emit("keydown", { content: num });
+    }
+  },
+
+  handleRectScroll(event) {
+    let scrollWidth = 600;
+    let percentTemp = (event.scrollX / scrollWidth) * 100;
+    this.scrollPercent = Math.min(Math.max(parseInt(percentTemp), 0), 100);
+  },
+
+  pushCval() {
+    if (this.cval) {
+      this.onVibrate();
+      let temp = this.cval;
+      this.cval = "";
+      this.resultList = [];
+      this.resultList2 = [];
+      this.$emit("complete", { content: temp });
+    }
+  }
+};
+</script>
+
+<style>
+.keyboard-root {
+  width: 100%;
+  height: 320px;
+  background-color: #000000;
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+}
+
+.keyboard-main {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 5px 0;
+}
+
+.keyboard-content {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 10px;
+}
+
+.top-bar {
+  width: 100%;
+  height: 65px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5px;
+}
+
+.side-btn-group {
+  flex-direction: row;
+  align-items: center;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+.icon-btn {
+  width: 60px;
+  height: 60px;
+  padding: 5px;
+}
+
+.candidate-area {
+  flex: 1;
+  height: 85px;
+  background-color: #1c1c1e;
+  border-radius: 35px;
+  flex-direction: row;
+  align-items: center;
+  margin: 0 5px;
+  padding: 0 12px;
+  justify-content: center;
+}
+
+.candidate-scroll {
+  flex: 1;
+  height: 100%;
+}
+
+.candidate-list {
+  height: 100%;
+  align-items: center;
+}
+
+.candidate-text-pinyin {
+  color: #ff9500;
+  font-size: 28px;
+  margin-right: 12px;
+}
+
+.candidate-text {
+  color: #ffffff;
+  font-size: 28px;
+  margin-right: 12px;
+}
+
+.down-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.func-area {
+  flex: 1;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin: 0 10px;
+  padding: 18px 0;
+}
+
+.func-btn-img {
+  width: 80px;
+  height: 60px;
+  margin: 0 5px;
+}
+
+.func-btn-img-wide {
+  width: 100px;
+  height: 60px;
+  margin: 0 5px;
+}
+
+.func-btn-img-extra-wide {
+  width: 140px;
+  height: 60px;
+  margin: 0 5px;
+}
+
+.back-btn {
+  width: 60px;
+  height: 60px;
+  justify-content: center;
+  align-items: center;
+  background-color: #3a3a3c;
+  border-radius: 30px;
+  margin-left: 5px;
+}
+
+.back-icon {
+  font-size: 40px;
+  color: #ffffff;
+}
+
+.keys-area {
+  width: 100%;
+  height: 240px;
+  position: relative;
+  margin-top: 10px;
+}
+
+.keys-container {
+  flex-direction: column;
+  padding-left: 10px;
+}
+
+.key-row {
+  height: 70px;
+  flex-direction: row;
+  margin-bottom: 5px;
+}
+
+.row-2 {
+  margin-left: 20px;
+}
+
+.row-3 {
+  margin-left: 40px;
+}
+
+.key-btn {
+  width: 65px;
+  height: 65px;
+  background-color: #2c2c2e;
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 12px;
+  margin-right: 6px;
+  border: 1px solid #3a3a3c;
+}
+
+.space-btn {
+  width: 120px;
+  height: 65px;
+  background-color: #3a3a3c;
+  border-radius: 12px;
+}
+
+.scroll-progress {
+  position: absolute;
+  bottom: 5px;
+  left: 166px;
+  width: 100px;
+  height: 4px;
+  color: #ffffff;
+}
+
+.full-candidate-view {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 432px;
+  height: 350px;
+  background-color: #000000;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.full-candidate-box {
+  width: 100%;
+  flex: 1;
+  background-color: #1c1c1e;
+  border-radius: 20px;
+  padding: 10px;
+}
+
+.full-candidate-list {
+  width: 100%;
+  height: 100%;
+}
+
+.full-candidate-item {
+  width: 100%;
+  height: 80px;
+}
+
+.candidate-row {
+  width: 100%;
+  flex-direction: row;
+  justify-content: space-around;
+}
+
+.candidate-grid-text {
+  color: #ffffff;
+  font-size: 40px;
+  padding: 10px;
+}
+
+.up-icon {
+  width: 60px;
+  height: 60px;
+  margin-top: 10px;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+.keyboard-root {
+    width: 100%;
+    height: 260px;
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+  }
+  
+  .keyboard-main {
+    padding: 5px 0;
+  }
+  
+  .top-bar {
+    width: 90%;
+    height: 55px;
+    padding: 0 3px;
+    margin-bottom: 6px;
+  }
+  
+  .icon-btn {
+    width: 45px;
+    height: 45px;
+    padding: 3px;
+  }
+  
+  .candidate-area {
+  
+      height: 70px;
+  
+      margin: 0 3px;
+  
+      padding: 0 10px;
+  
+      border-radius: 28px;
+  
+      justify-content: center;
+  
+    }.candidate-text-pinyin {
+    font-size: 26px;
+    margin-right: 10px;
+  }
+  
+  .candidate-text {
+    font-size: 26px;
+    margin-right: 10px;
+  }
+  
+  .down-icon {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .func-area {
+    width: 90%;
+    padding: 20px 0;
+  }
+  
+  .func-btn-img {
+    width: 63px;
+    height: 48px;
+    margin: 0 4px;
+  }
+  
+  .func-btn-img-wide {
+    width: 80px;
+    height: 48px;
+    margin: 0 4px;
+  }
+  
+  .func-btn-img-extra-wide {
+    width: 110px;
+    height: 48px;
+    margin: 0 4px;
+  }
+  
+  .full-candidate-item {
+    height: 60px;
+  }
+  
+  .candidate-grid-text {
+    font-size: 30px;
+    padding: 8px;
+  }
+  
+  .up-icon {
+    width: 45px;
+    height: 45px;
+    margin-top: 8px;
+  }
+}
+
+/* 432*514 设备适配（保持原有尺寸） */
+@media (min-width: 432px) and (max-width: 432px) {
+  .keyboard-root {
+    width: 432px;
+    height: 280px;
+  }
+
+  .top-bar {
+    width: 90%;
+    height: 60px;
+    padding: 0 10px;
+    margin-bottom: 8px;
+  }
+
+  .icon-btn {
+    width: 60px;
+    height: 60px;
+    padding: 5px;
+  }
+
+  .candidate-area {
+    width: 90%;
+    height: 60px;
+    border-radius: 30px;
+    margin: 0 10px;
+    padding: 0 15px;
+  }
+
+  .candidate-text-pinyin {
+    font-size: 32px;
+    margin-right: 15px;
+  }
+
+  .candidate-text {
+    font-size: 32px;
+    margin-right: 15px;
+  }
+
+  .down-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .func-area {
+    width: 90%;
+  }
+
+  .func-btn-img {
+    width: 80px;
+    height: 60px;
+    margin: 0 5px;
+  }
+
+  .func-btn-img-wide {
+    width: 100px;
+    height: 60px;
+    margin: 0 5px;
+  }
+
+  .func-btn-img-extra-wide {
+    width: 140px;
+    height: 60px;
+    margin: 0 5px;
+  }
+
+  .full-candidate-item {
+    height: 80px;
+  }
+
+  .candidate-grid-text {
+    font-size: 40px;
+    padding: 10px;
+  }
+
+  .up-icon {
+    width: 60px;
+    height: 60px;
+    margin-top: 10px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .keyboard-root {
+    width: 100%;
+    height: 300px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+  }
+
+  .keyboard-main {
+    padding: 5px 0;
+  }
+
+  .keyboard-content {
+    padding-bottom: 8px;
+  }
+
+  .top-bar {
+    width: 100%;
+    height: 60px;
+    padding: 0 8px;
+    margin-bottom: 6px;
+  }
+
+  .side-btn-group {
+    margin-left: 5px;
+    margin-right: 5px;
+  }
+
+  .icon-btn {
+    width: 55px;
+    height: 55px;
+    padding: 3px;
+  }
+
+  .candidate-area {
+    height: 62px;
+    margin: 0 5px;
+    padding: 0 14px;
+    border-radius: 31px;
+  }
+
+  .candidate-text-pinyin {
+    font-size: 28px;
+    margin-right: 12px;
+  }
+
+  .candidate-text {
+    font-size: 28px;
+    margin-right: 12px;
+  }
+
+  .down-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .func-area {
+    padding: 15px 0;
+  }
+
+  .func-btn-img {
+    width: 70px;
+    height: 52px;
+    margin: 0 4px;
+  }
+
+  .func-btn-img-wide {
+    width: 90px;
+    height: 52px;
+    margin: 0 4px;
+  }
+
+  .func-btn-img-extra-wide {
+    width: 120px;
+    height: 52px;
+    margin: 0 4px;
+  }
+
+  .back-btn {
+    width: 55px;
+    height: 55px;
+    border-radius: 28px;
+    margin-left: 5px;
+  }
+
+  .back-icon {
+    font-size: 34px;
+  }
+
+  .keys-area {
+    height: 210px;
+    margin-top: 6px;
+  }
+
+  .keys-container {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .key-row {
+    height: 62px;
+    margin-bottom: 5px;
+    justify-content: center;
+  }
+
+  .row-2 {
+    margin-left: 15px;
+  }
+
+  .row-3 {
+    margin-left: 30px;
+  }
+
+  .key-btn {
+    width: 55px;
+    height: 55px;
+    font-size: 28px;
+    border-radius: 10px;
+    margin-right: 5px;
+  }
+
+  .space-btn {
+    width: 110px;
+    height: 55px;
+    border-radius: 10px;
+  }
+
+  .scroll-progress {
+    left: 50%;
+    margin-left: -50px;
+    width: 100px;
+    height: 4px;
+  }
+
+  .full-candidate-view {
+    width: 100%;
+    height: 340px;
+    padding: 15px 30px;
+  }
+
+  .full-candidate-box {
+    border-radius: 18px;
+    padding: 10px;
+  }
+
+  .full-candidate-item {
+    height: 60px;
+  }
+
+  .candidate-grid-text {
+    font-size: 34px;
+    padding: 8px;
+  }
+
+  .up-icon {
+    width: 50px;
+    height: 50px;
+    margin-top: 8px;
+  }
+}
+</style>

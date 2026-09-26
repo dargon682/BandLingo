@@ -1,0 +1,614 @@
+<import name="inputmethod" src="../../components/InputMethod/InputMethod"></import>
+
+<template>
+  <div class="dict-page">
+    <div class="content-wrapper" if="{{ !keyboardVisible }}">
+      <div class="brand-block">
+        <text static class="page-title">BandLingo</text>
+        <text static class="page-subtitle">腕上词典 · v1.1 Beta</text>
+      </div>
+      <div class="input-container {{ searchWord ? 'has-input' : '' }}" onclick="showKeyboard">
+        <text class="input-display {{ searchWord ? 'has-content' : 'placeholder' }}">{{ searchWord || '输入中文或英文单词' }}</text>
+      </div>
+      <div class="button-row">
+        <div class="search-btn" onclick="handleSearch">
+          <text static class="search-btn-text">搜索</text>
+        </div>
+        <div class="favorites-btn" onclick="goToFavorites">
+          <text static class="favorites-btn-text">收藏夹</text>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-btn" onclick="goToSettings">
+          <text static class="settings-btn-text">设定</text>
+        </div>
+      </div>
+    </div>
+    
+    <div class="input-wrapper" if="{{ keyboardVisible }}">
+      <div class="input-container-top">
+        <text class="input-display-top">{{ searchWord || '输入中文或英文单词...' }}</text>
+      </div>
+      <div class="search-btn-top" onclick="handleSearch">
+        <text static class="search-btn-text-top">搜索</text>
+      </div>
+      <div class="keyboard-container">
+        <inputmethod 
+          hide="{{ false }}" 
+          maxlength="20"
+          onkeydown="handleInputKeyDown"
+          oncomplete="handleInputComplete"
+          ondelete="handleInputDelete"
+          onhide="hideKeyboard"
+        ></inputmethod>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+
+export default {
+  data: {
+    searchWord: "",
+    keyboardVisible: false
+  },
+
+  onInit() {
+    this.searchWord = ""
+    this.keyboardVisible = false
+  },
+
+  showKeyboard() {
+    this.keyboardVisible = true
+  },
+
+  hideKeyboard() {
+    this.keyboardVisible = false
+  },
+
+  handleInputKeyDown(e) {
+    const content = e.detail ? e.detail.content : e.content;
+    if (content && this.searchWord.length < 20) {
+      this.searchWord += content;
+    }
+  },
+
+  handleInputComplete(e) {
+    const content = e.detail ? e.detail.content : e.content;
+    if (content && this.searchWord.length < 20) {
+      this.searchWord += content;
+    }
+  },
+
+  handleInputDelete() {
+    if (this.searchWord.length > 0) {
+      this.searchWord = this.searchWord.slice(0, -1);
+    }
+  },
+
+  handleSearch() {
+    const word = this.searchWord ? this.searchWord.trim() : "";
+    console.log('=== 搜索按钮被点击 ===');
+    console.log('当前搜索词:', this.searchWord);
+    console.log('处理后的搜索词:', word);
+    
+    if (word) {
+      console.log('执行搜索，搜索词:', word);
+      try {
+        // 根据官方文档，使用以 '/' 开头的应用内页面路径
+        router.push({
+          uri: '/pages/searchResult',
+          params: { 
+            word: word 
+          }
+        });
+        console.log('路由跳转调用成功');
+      } catch (error) {
+        console.error('路由跳转失败:', error);
+      }
+    } else {
+      console.log('搜索词为空，不执行搜索');
+    }
+  },
+
+  goToFavorites() {
+    console.log('=== 开始跳转到收藏夹 ===');
+    try {
+      router.push({
+        uri: '/pages/favorites'
+      });
+      console.log('收藏夹跳转调用成功');
+    } catch (error) {
+      console.error('收藏夹跳转失败:', error);
+    }
+    console.log('=== 收藏夹跳转方法调用完成 ===');
+  },
+
+
+
+  goToSettings() {
+    router.push({
+      uri: '/pages/settings'
+    });
+  },
+
+  onDestroy() {
+    // 页面销毁时清理数据，避免内存泄漏
+    this.searchWord = "";
+    this.keyboardVisible = false;
+    // 调用垃圾回收
+    if (typeof global !== 'undefined' && global.runGC) {
+      global.runGC();
+    }
+  }
+}
+</script>
+
+<style>
+.dict-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.content-wrapper {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.brand-block {
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 42px;
+}
+
+.page-title {
+  font-size: 42px;
+  color: #FFFFFF;
+  text-align: center;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.page-subtitle {
+  font-size: 18px;
+  color: #8E8E93;
+  text-align: center;
+  margin-top: 10px;
+  opacity: 0.9;
+}
+
+.input-container {
+  width: 85%;
+  height: 80px;
+  padding: 0 25px;
+  border-radius: 40px;
+  background-color: #2C2C2E;
+  margin-bottom: 35px;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #48484A;
+  align-self: center;
+  display: flex;
+}
+
+.input-container.has-input {
+  border-color: #0A84FF;
+}
+
+.input-display {
+  font-size: 32px;
+  text-align: center;
+  width: 100%;
+  color: #FFFFFF;
+}
+
+.placeholder {
+  color: #98989A;
+  opacity: 0.8;
+}
+
+.has-content {
+  color: #FFFFFF;
+}
+
+.button-row {
+  flex-direction: row;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.settings-row {
+  flex-direction: row;
+  justify-content: center;
+  width: 100%;
+}
+
+.search-btn {
+  width: 150px;
+  height: 74px;
+  border-radius: 37px;
+  background-color: #007AFF;
+  justify-content: center;
+  align-items: center;
+  margin-right: 18px;
+  border: 2px solid #3395FF;
+}
+
+.search-btn-text {
+  color: #FFFFFF;
+  font-size: 26px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.favorites-btn {
+  width: 150px;
+  height: 74px;
+  border-radius: 37px;
+  background-color: #1C1C1E;
+  justify-content: center;
+  align-items: center;
+  margin-left: 18px;
+  border: 2px solid #FF9F0A;
+}
+
+.favorites-btn-text {
+  color: #FF9F0A;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.settings-btn {
+  width: 170px;
+  height: 64px;
+  border-radius: 32px;
+  background-color: rgba(88, 86, 214, 0.16);
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #5856D6;
+}
+
+.settings-btn-text {
+  color: #FFFFFF;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.input-wrapper {
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.input-container-top {
+    width: 85%;
+    height: 70px;
+    padding: 0 18px;
+    margin: 20px 0 8px 0;
+    border-radius: 35px;
+    background-color: #2C2C2E;
+    border: 2px solid #48484A;
+  }
+  
+  .input-display-top {
+    font-size: 32px;
+    color: #FFFFFF;
+  }
+
+.search-btn-top {
+  width: 80%;
+  height: 70px;
+  border-radius: 35px;
+  background-color: #007AFF;
+  margin: 0 0 15px 0;
+  justify-content: center;
+  align-items: center;
+}
+
+.search-btn-text-top {
+  color: #FFFFFF;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.keyboard-container {
+  width: 100%;
+  flex: 1;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .brand-block {
+    margin-bottom: 32px;
+  }
+
+  .page-title {
+    font-size: 32px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  
+.input-container {
+    width: 85%;
+    height: 80px;
+    padding: 0 20px;
+    margin-bottom: 35px;
+    align-self: center;
+    background-color: #2C2C2E;
+    border: 2px solid #48484A;
+  }
+  
+  .input-display {
+    font-size: 34px;
+    color: #FFFFFF;
+  }
+  
+  .button-row {
+    margin-bottom: 8px;
+  }
+  
+.search-btn {
+    width: 140px;
+    height: 70px;
+    margin-right: 15px;
+    border-radius: 35px;
+  }
+  
+  .search-btn-text {
+    font-size: 26px;
+  }
+  
+  .favorites-btn {
+    width: 140px;
+    height: 70px;
+    margin-left: 15px;
+    border-radius: 35px;
+  }
+  
+  .favorites-btn-text {
+    font-size: 26px;
+  }
+  
+  .settings-btn {
+    width: 160px;
+    height: 60px;
+    border-radius: 35px;
+  }
+  
+  .settings-btn-text {
+    font-size: 22px;
+  }
+  
+  .input-container-top {
+    width: 85%;
+    height: 50px;
+    padding: 0 15px;
+    margin: 6px 0 3px 0;
+  }
+  
+  .input-display-top {
+    font-size: 22px;
+  }
+  
+  .search-btn-top {
+    width: 80%;
+    height: 45px;
+    margin: 0 0 10px 0;
+  }
+  
+  .search-btn-text-top {
+    font-size: 20px;
+  }
+  
+  .keyboard-container {
+    width: 100%;
+    height: 260px;
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+  }
+}
+
+/* 432*514 设备适配（保持原有尺寸） */
+@media (min-width: 432px) and (max-width: 432px) {
+  .brand-block {
+    margin-bottom: 40px;
+  }
+
+  .page-title {
+    font-size: 40px;
+  }
+
+  .page-subtitle {
+    font-size: 16px;
+    margin-top: 10px;
+  }
+  
+  .input-container {
+    width: 85%;
+    height: 90px;
+    padding: 0 30px;
+    margin-bottom: 40px;
+    align-self: center;
+    background-color: #2C2C2E;
+    border: 2px solid #48484A;
+  }
+  
+  .input-display {
+    font-size: 36px;
+    color: #FFFFFF;
+  }
+  
+  .button-row {
+    margin-bottom: 12px;
+  }
+  
+  .search-btn {
+    width: 160px;
+    height: 80px;
+    margin-right: 20px;
+  }
+  
+  .search-btn-text {
+    font-size: 28px;
+  }
+  
+  .favorites-btn {
+    width: 160px;
+    height: 80px;
+    margin-left: 20px;
+  }
+  
+  .favorites-btn-text {
+    font-size: 28px;
+  }
+  
+  .settings-btn {
+    width: 220px;
+    height: 80px;
+  }
+  
+  .settings-btn-text {
+    font-size: 32px;
+  }
+  
+  .input-container-top {
+    width: 85%;
+    height: 70px;
+    padding: 0 20px;
+    margin: 10px 0 5px 0;
+    background-color: #2C2C2E;
+    border: 2px solid #48484A;
+  }
+  
+  .input-display-top {
+    font-size: 34px;
+    color: #FFFFFF;
+  }  .search-btn-top {
+    width: 80%;
+    height: 70px;
+    margin: 0 0 15px 0;
+  }
+  
+  .search-btn-text-top {
+    font-size: 30px;
+  }
+  
+  .keyboard-container {
+    width: 100%;
+    height: 320px;
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .brand-block {
+    margin-bottom: 30px;
+  }
+
+  .page-title {
+    font-size: 36px;
+  }
+
+  .page-subtitle {
+    font-size: 15px;
+    margin-top: 8px;
+  }
+
+  .input-container {
+    width: 85%;
+    height: 75px;
+    padding: 0 25px;
+    margin-bottom: 30px;
+    border-radius: 38px;
+  }
+
+  .input-display {
+    font-size: 30px;
+  }
+
+  .button-row {
+    margin-bottom: 10px;
+  }
+
+  .search-btn {
+    width: 140px;
+    height: 65px;
+    border-radius: 33px;
+    margin-right: 18px;
+  }
+
+  .search-btn-text {
+    font-size: 24px;
+  }
+
+  .favorites-btn {
+    width: 140px;
+    height: 65px;
+    border-radius: 33px;
+    margin-left: 18px;
+  }
+
+  .favorites-btn-text {
+    font-size: 24px;
+  }
+
+  .settings-btn {
+    width: 180px;
+    height: 65px;
+    border-radius: 33px;
+  }
+
+  .settings-btn-text {
+    font-size: 26px;
+  }
+
+  .input-container-top {
+    width: 85%;
+    height: 65px;
+    padding: 0 20px;
+    margin: 10px 0 5px 0;
+    border-radius: 33px;
+  }
+
+  .input-display-top {
+    font-size: 28px;
+  }
+
+  .search-btn-top {
+    width: 80%;
+    height: 65px;
+    margin: 0 0 12px 0;
+    border-radius: 33px;
+  }
+
+  .search-btn-text-top {
+    font-size: 26px;
+  }
+
+  .keyboard-container {
+    width: 100%;
+    height: 300px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+  }
+}
+</style>

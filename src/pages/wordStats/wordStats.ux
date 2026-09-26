@@ -1,0 +1,422 @@
+<template>
+  <div class="word-stats-page">
+    <div class="header">
+      <div class="back-icon-container" onclick="goBack">
+        <text static class="back-icon">←</text>
+      </div>
+    </div>
+    
+    <div class="content-container">
+      <div class="stats-list">
+        <div class="title-container">
+          <text static class="page-title">词库统计</text>
+        </div>
+        
+        <div class="stats-card">
+          <text class="stats-label">当前词库</text>
+          <div class="stats-main">
+            <text class="stat-number">{{ dictionaryCount }}</text>
+            <text class="stat-unit">词条</text>
+          </div>
+        </div>
+        
+        <div class="stats-card ai-card">
+          <text class="stats-label">AI 词库</text>
+          <div class="stats-main">
+            <text class="stat-number ai-number">{{ aiWordCount }}</text>
+            <text class="stat-unit">词条</text>
+          </div>
+          <text class="ai-note">使用AI总结自动累积</text>
+        </div>
+        
+        <div class="stats-card manual-card">
+          <text class="stats-label">手动输入词库</text>
+          <div class="stats-main">
+            <text class="stat-number manual-number">{{ manualWordCount }}</text>
+            <text class="stat-unit">词条</text>
+          </div>
+          <text class="ai-note">手动添加的单词</text>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import storage from "../../storage"
+
+export default {
+  data: {
+    dictionaryCount: 0,
+    aiWordCount: 0,
+    manualWordCount: 0
+  },
+
+  onInit() {
+    console.log('词库统计页面初始化');
+    this.calculateWordCount();
+    this.loadAIDictionary();
+    this.loadManualDictionary();
+  },
+
+  onShow() {
+    console.log('词库统计页面显示');
+    this.calculateWordCount();
+    this.loadAIDictionary();
+    this.loadManualDictionary();
+  },
+
+  calculateWordCount() {
+    // 从全局读取词库词条数（词库在 app.ux 统一加载一次）
+    this.dictionaryCount =
+      (this.$app && this.$app.globalData && this.$app.globalData.dictionaryCount) || 0;
+    console.log('词库词条数:', this.dictionaryCount);
+  },
+
+  loadAIDictionary() {
+    // 从存储中读取 ai_dictionary，统计实际词条数量
+    storage.get({
+      key: 'ai_dictionary',
+      default: '',
+      success: (data) => {
+        console.log('读取AI词典数据:', data ? '有数据' : '无数据');
+        if (data && data !== '') {
+          try {
+            const aiDictionary = JSON.parse(data);
+            this.aiWordCount = Object.keys(aiDictionary).length;
+            console.log('AI词库实际词条数:', this.aiWordCount);
+          } catch (e) {
+            console.error('解析AI词典失败:', e);
+            this.aiWordCount = 0;
+          }
+        } else {
+          this.aiWordCount = 0;
+          console.log('AI词典为空');
+        }
+      },
+      fail: (err) => {
+        console.error('读取AI词典失败:', err);
+        this.aiWordCount = 0;
+      }
+    });
+  },
+
+  loadManualDictionary() {
+    // 从存储中读取 manual_dictionary，统计实际词条数量
+    storage.get({
+      key: 'manual_dictionary',
+      default: '',
+      success: (data) => {
+        console.log('读取手动词库数据:', data ? '有数据' : '无数据');
+        if (data && data !== '') {
+          try {
+            const manualDictionary = JSON.parse(data);
+            this.manualWordCount = Object.keys(manualDictionary).length;
+            console.log('手动词库实际词条数:', this.manualWordCount);
+          } catch (e) {
+            console.error('解析手动词库失败:', e);
+            this.manualWordCount = 0;
+          }
+        } else {
+          this.manualWordCount = 0;
+          console.log('手动词库为空');
+        }
+      },
+      fail: (err) => {
+        console.error('读取手动词库失败:', err);
+        this.manualWordCount = 0;
+      }
+    });
+  },
+
+  goBack() {
+    router.back();
+  }
+}
+</script>
+
+<style>
+.word-stats-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 80px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+}
+
+.back-icon-container {
+  width: 120px;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 25px;
+  border: 2px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 30px;
+  color: #FFFFFF;
+}
+
+.content-container {
+  flex: 1;
+  width: 100%;
+  padding: 0 20px 20px 20px;
+}
+
+.stats-list {
+  flex: 1;
+  width: 100%;
+  padding: 0 24px;
+  flex-direction: column;
+  overflow: scroll;
+  scrollable: true;
+}
+
+.title-container {
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.page-title {
+  font-size: 22px;
+  color: #3498DB;
+  font-weight: 600;
+}
+
+.stats-card {
+  width: 100%;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border: 1px solid #3A5F8A;
+  flex-direction: column;
+}
+
+.stats-label {
+  font-size: 14px;
+  color: #AAAAAA;
+  margin-bottom: 12px;
+}
+
+.stats-main {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.stat-number {
+  font-size: 48px;
+  color: #34C759;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.ai-number {
+  color: #A855F7;
+}
+
+.stat-unit {
+  font-size: 14px;
+  color: #888888;
+}
+
+.ai-card {
+  border-color: #5B3D8A;
+}
+
+.manual-card {
+  border-color: #3D8A5B;
+}
+
+.manual-number {
+  color: #10B981;
+}
+
+.ai-note {
+  font-size: 11px;
+  color: #666666;
+  text-align: right;
+  margin-top: 8px;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .word-stats-page {
+    width: 336px;
+    height: 480px;
+  }
+  
+  .header {
+    height: 70px;
+    padding: 0 18px;
+  }
+  
+  .back-icon-container {
+    width: 100px;
+    height: 45px;
+    border-radius: 22px;
+  }
+  
+  .back-icon {
+    font-size: 26px;
+  }
+  
+  .content-container {
+    padding: 0 12px 12px 12px;
+  }
+  
+  .stats-list {
+    padding: 0 18px;
+  }
+  
+  .page-title {
+    font-size: 20px;
+  }
+  
+  .stats-card {
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  
+  .stats-label {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .stat-number {
+    font-size: 40px;
+  }
+  
+  .stat-unit {
+    font-size: 12px;
+  }
+  
+  .ai-note {
+    font-size: 10px;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .word-stats-page {
+    width: 432px;
+    height: 514px;
+  }
+  
+  .header {
+    height: 90px;
+    padding: 0 24px;
+  }
+  
+  .back-icon-container {
+    width: 140px;
+    height: 55px;
+    border-radius: 28px;
+  }
+  
+  .back-icon {
+    font-size: 34px;
+  }
+  
+  .content-container {
+    padding: 0 24px 24px 24px;
+  }
+  
+  .stats-list {
+    padding: 0 24px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
+  
+  .stats-card {
+    padding: 18px 22px;
+    margin-bottom: 18px;
+  }
+  
+  .stats-label {
+    font-size: 15px;
+    margin-bottom: 14px;
+  }
+  
+  .stat-number {
+    font-size: 52px;
+  }
+  
+  .stat-unit {
+    font-size: 15px;
+  }
+  
+  .ai-note {
+    font-size: 12px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+    padding: 0 20px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-container {
+    padding: 0 18px 18px 18px;
+  }
+
+  .stats-list {
+    padding: 0 20px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .stats-card {
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
+
+  .stats-label {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .stat-number {
+    font-size: 42px;
+  }
+
+  .stat-unit {
+    font-size: 14px;
+  }
+
+  .ai-note {
+    font-size: 11px;
+  }
+}
+</style>

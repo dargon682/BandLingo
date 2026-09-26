@@ -1,0 +1,427 @@
+<template>
+  <div class="settings-page">
+    <div class="header">
+      <div class="back-icon-container" onclick="goBack">
+        <text static class="back-icon">←</text>
+      </div>
+    </div>
+    
+    <scroll class="content-scroll" scroll-y="true">
+      <div class="setting-item" onclick="goToAbout">
+        <div class="item-content">
+          <img src="/common/logo.png" class="app-icon" />
+          <div class="item-text">
+            <text class="item-title">关于BandLingo</text>
+            <text class="item-subtitle">版本 1.1 Beta</text>
+          </div>
+        </div>
+        <text static class="arrow-icon">></text>
+      </div>
+
+      <div class="setting-item" onclick="goToUIStyle">
+        <div class="item-content">
+          <img src="/common/uichange.png" class="app-icon" />
+          <div class="item-text">
+            <text class="item-title">UI样式</text>
+            <text class="item-subtitle">{{ uiStyleName }}</text>
+          </div>
+        </div>
+        <text static class="arrow-icon">></text>
+      </div>
+
+      <div class="setting-item" onclick="goToWordStats">
+        <div class="item-content">
+          <img src="/common/word.png" class="app-icon" />
+          <div class="item-text">
+            <text class="item-title">词库统计</text>
+            <text class="item-subtitle">查看词库单词数量</text>
+          </div>
+        </div>
+        <text static class="arrow-icon">></text>
+      </div>
+
+      <div class="setting-item" onclick="goToAddWord">
+        <div class="item-content">
+          <img src="/common/addword.png" class="app-icon" />
+          <div class="item-text">
+            <text class="item-title">添加单词</text>
+            <text class="item-subtitle">手动添加单词到词库</text>
+          </div>
+        </div>
+        <text static class="arrow-icon">></text>
+      </div>
+
+      <div class="setting-item" onclick="goToStorage">
+        <div class="item-content">
+          <img src="/common/storage.png" class="app-icon" />
+          <div class="item-text">
+            <text class="item-title">存储管理</text>
+            <text class="item-subtitle">查看存储使用情况</text>
+          </div>
+        </div>
+        <text static class="arrow-icon">></text>
+      </div>
+
+      <div class="setting-item" onclick="goToDonate">
+        <div class="item-content">
+          <img src="/common/donate.png" class="app-icon" />
+          <div class="item-text">
+            <text class="item-title">捐赠支持</text>
+            <text class="item-subtitle">支持开发者</text>
+          </div>
+        </div>
+        <text static class="arrow-icon">></text>
+      </div>
+
+      <div class="footer-space"></div>
+    </scroll>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import storage from "../../storage"
+import { UI_STYLE_NAMES, UI_STYLE_DEFAULT } from "../../common/uiTheme"
+
+export default {
+  data: {
+    settingItems: [],
+    uiStyleName: UI_STYLE_NAMES[UI_STYLE_DEFAULT] || '经典样式'
+  },
+
+  onInit() {
+    console.log('设定页面初始化');
+    this.loadUIStyle();
+  },
+
+  onShow() {
+    this.loadUIStyle();
+  },
+
+  loadUIStyle() {
+    storage.get({
+      key: 'ui_style',
+      default: UI_STYLE_DEFAULT,
+      success: (data) => {
+        this.uiStyleName = UI_STYLE_NAMES[data] || UI_STYLE_NAMES[UI_STYLE_DEFAULT];
+        console.log('加载UI样式:', this.uiStyleName);
+      },
+      fail: (err) => {
+        console.error('加载UI样式失败:', err);
+        this.uiStyleName = UI_STYLE_NAMES[UI_STYLE_DEFAULT];
+      }
+    });
+  },
+
+  goBack() {
+    router.back();
+  },
+
+  goToAbout() {
+    router.push({
+      uri: '/pages/about'
+    });
+  },
+
+  goToUIStyle() {
+    router.push({
+      uri: '/pages/uiStyle'
+    });
+  },
+
+  goToStorage() {
+    router.push({
+      uri: '/pages/storage'
+    });
+  },
+
+  goToWordStats() {
+    router.push({
+      uri: '/pages/wordStats'
+    });
+  },
+
+  goToAddWord() {
+    router.push({
+      uri: '/pages/addWord'
+    });
+  },
+
+  goToDonate() {
+    router.push({
+      uri: '/pages/donate'
+    });
+  }
+}
+</script>
+
+<style>
+.settings-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 70px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-icon-container {
+  width: 100px;
+  height: 42px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 21px;
+  border: 1px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 24px;
+  color: #FFFFFF;
+}
+
+.page-title {
+  font-size: 32px;
+  color: #FFFFFF;
+  font-weight: bold;
+  margin-left: 20px;
+}
+
+.content-scroll {
+  flex: 1;
+  width: 100%;
+  flex-direction: column;
+  padding: 0 20px;
+}
+
+.setting-item {
+  width: 100%;
+  height: 70px;
+  background-color: #1C1C1E;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border: 1px solid #2C2C2E;
+}
+
+.item-content {
+  flex-direction: row;
+  align-items: center;
+  flex: 1;
+}
+
+.app-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  margin-right: 14px;
+}
+
+.setting-icon {
+  font-size: 24px;
+  margin-right: 14px;
+  width: 28px;
+  text-align: center;
+}
+
+.item-text {
+  flex: 1;
+  flex-direction: column;
+}
+
+.item-title {
+  font-size: 18px;
+  color: #FFFFFF;
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+
+.item-subtitle {
+  font-size: 14px;
+  color: #8E8E93;
+}
+
+.arrow-icon {
+  font-size: 22px;
+  color: #3A3A3C;
+}
+
+.footer-space {
+  height: 20px;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .settings-page {
+    width: 336px;
+    height: 480px;
+  }
+  
+  .header {
+    height: 60px;
+  }
+  
+  .back-icon-container {
+    width: 90px;
+    height: 38px;
+    border-radius: 19px;
+  }
+  
+  .back-icon {
+    font-size: 22px;
+  }
+  
+  .content-scroll {
+    padding: 0 18px;
+  }
+  
+  .setting-item {
+    height: 65px;
+    margin-bottom: 10px;
+    padding: 0 16px;
+  }
+  
+  .app-icon {
+    width: 38px;
+    height: 38px;
+    margin-right: 12px;
+  }
+  
+  .setting-icon {
+    font-size: 22px;
+    margin-right: 12px;
+  }
+  
+  .item-title {
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+  
+  .item-subtitle {
+    font-size: 12px;
+  }
+  
+  .arrow-icon {
+    font-size: 20px;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .settings-page {
+    width: 432px;
+    height: 514px;
+  }
+  
+  .header {
+    height: 80px;
+  }
+  
+  .back-icon-container {
+    width: 120px;
+    height: 48px;
+    border-radius: 24px;
+  }
+  
+  .back-icon {
+    font-size: 28px;
+  }
+  
+  .content-scroll {
+    padding: 0 24px;
+  }
+  
+  .setting-item {
+    height: 80px;
+    margin-bottom: 12px;
+    padding: 0 24px;
+  }
+  
+  .app-icon {
+    width: 48px;
+    height: 48px;
+    margin-right: 16px;
+  }
+  
+  .setting-icon {
+    font-size: 28px;
+    margin-right: 16px;
+    width: 32px;
+  }
+  
+  .item-title {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  
+  .item-subtitle {
+    font-size: 16px;
+  }
+  
+  .arrow-icon {
+    font-size: 24px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .content-scroll {
+    padding: 0 24px;
+  }
+
+  .setting-item {
+    height: 75px;
+    margin-bottom: 12px;
+    padding: 0 20px;
+    border-radius: 12px;
+  }
+
+  .app-icon {
+    width: 44px;
+    height: 44px;
+    margin-right: 14px;
+  }
+
+  .setting-icon {
+    font-size: 26px;
+    margin-right: 14px;
+    width: 30px;
+  }
+
+  .item-title {
+    font-size: 18px;
+    margin-bottom: 3px;
+  }
+
+  .item-subtitle {
+    font-size: 14px;
+  }
+
+  .arrow-icon {
+    font-size: 22px;
+  }
+}
+</style>

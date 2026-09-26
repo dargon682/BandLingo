@@ -1,0 +1,927 @@
+<template>
+  <div class="detail-page">
+    <div class="header">
+      <div class="back-icon-container" onclick="goBack">
+        <text static class="back-icon">←</text>
+      </div>
+    </div>
+    
+    <div class="content-container" style="overflow-y: scroll;">
+        <div if="{{ displayWord }}" class="word-detail-card">
+          <div class="word-section">
+            <text class="word-text">{{ displayWord }}</text>
+            <div class="word-meta-row" if="{{ displayPos || displayLevel }}">
+              <text class="word-meta-pill" if="{{ displayPos }}">{{ posLabel(displayPos) }}</text>
+              <text class="word-meta-pill pill-level" if="{{ displayLevel }}">{{ levelLabel(displayLevel) }}</text>
+            </div>
+          </div>
+          
+          <div class="definition-section">
+            <text static class="definition-label">释义</text>
+            <text class="definition-text">{{ displayDefinition || '暂无释义' }}</text>
+          </div>
+          
+          <div class="word-forms-section" if="{{ showWordForms }}">
+          <div class="word-forms-list">
+            <div class="word-form-item" for="{{ wordFormsDataList }}" onclick="goToWordForm($item)">
+              <div class="word-form-content">
+                <text class="word-form-type">{{ $item.type }}</text>
+                <text class="word-form-text">{{ $item.word }}</text>
+              </div>
+              <text static class="word-form-arrow">→</text>
+            </div>
+          </div>
+        </div>
+        
+        <div class="action-section">
+          <div class="action-btn {{ isFavorited ? 'favorited' : '' }}" onclick="addToFavorites">
+            <text static class="action-btn-text">{{ isFavorited ? '已收藏' : '收藏' }}</text>
+          </div>
+        </div>
+        </div>
+        
+        <div if="{{ !displayWord }}" class="no-data">
+          <text static class="no-data-text">未找到单词信息</text>
+          <div class="retry-btn" onclick="goBack">
+            <text static class="retry-btn-text">返回</text>
+          </div>
+        </div>
+      </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import { wordForms } from "../../common/wordForms"
+import { reverseWordForms } from "../../common/reverseWordForms"
+import { exactLookup } from "../../common/dictionaryIndex"
+import { isFavorite, toggleFavorite } from "../../common/favorites"
+import { POS_LABELS, LEVEL_LABELS } from "../../common/filterOptions"
+
+export default {
+  data: {
+    word: "",
+    definition: "",
+    displayWord: "",
+    displayDefinition: "",
+    isFavorited: false,
+    displayPos: "",
+    displayLevel: "",
+    wordFormsData: null,
+    showWordForms: false,
+    wordFormsDataList: []
+  },
+
+  onInit() {
+    console.log('=== WordDetail页面初始化开始 ===');
+    console.log('接收到的params:', JSON.stringify(this.params));
+    
+    // 初始化收藏状态
+    this.isFavorited = false;
+    
+    // 方法1：优先从全局变量获取数据
+    if (this.$app && this.$app.globalData && this.$app.globalData.word) {
+      this.word = this.$app.globalData.word;
+      this.definition = this.$app.globalData.definition || '';
+      console.log('从全局变量获取到数据:', { word: this.word, definition: this.definition });
+    }
+    
+    // 方法2：如果全局变量没有数据，从路由参数获取
+    if (!this.word && this.params) {
+      if (this.params.word) {
+        this.word = this.params.word;
+        console.log('从params获取到单词:', this.word);
+      }
+      if (this.params.definition) {
+        this.definition = this.params.definition;
+        console.log('从params获取到释义:', this.definition);
+      }
+    }
+    
+    // 设置显示数据
+    this.displayWord = this.word || "";
+    this.displayDefinition = this.definition || "";
+    
+    // 从字典获取释义与词性/考段元数据（双级：一级常驻 + 二级按需）
+    if (this.displayWord) {
+      const hit = exactLookup(this.displayWord);
+      if (hit) {
+        if (!this.displayDefinition) this.displayDefinition = hit.definition;
+        this.displayPos = hit.pos || "";
+        this.displayLevel = hit.level || "";
+      }
+    }
+    
+    // 最终检查：如果仍然没有数据，尝试从URI解析
+    if (!this.displayWord && this.uri) {
+      console.log('尝试从URI解析数据:', this.uri);
+      const parsedParams = this.parseUriParams(this.uri);
+      if (parsedParams.word) {
+        this.displayWord = parsedParams.word;
+        console.log('从URI解析到单词:', this.displayWord);
+      }
+      if (parsedParams.definition) {
+        this.displayDefinition = parsedParams.definition;
+        console.log('从URI解析到释义:', this.displayDefinition);
+      }
+    }
+    
+    console.log('最终显示单词:', this.displayWord);
+    console.log('最终显示释义:', this.displayDefinition);
+    
+    // 立即检查收藏状态和单词形态
+    if (this.displayWord) {
+      this.checkFavoritedStatus();
+      this.checkWordForms();
+    }
+    
+    console.log('=== WordDetail页面初始化完成 ===');
+  },
+
+  onShow() {
+    console.log('=== WordDetail页面显示 ===');
+    
+    // 如果当前没有显示数据，尝试重新获取
+    if (!this.displayWord) {
+      console.log('页面显示时没有数据，尝试重新获取...');
+      
+      // 尝试从全局变量获取
+      if (this.$app && this.$app.globalData && this.$app.globalData.word) {
+        this.displayWord = this.$app.globalData.word;
+        this.displayDefinition = this.$app.globalData.definition || '';
+        console.log('页面显示时从全局变量获取到数据:', { word: this.displayWord, definition: this.displayDefinition });
+        
+        // 重新检查收藏状态和单词形态
+        this.checkFavoritedStatus();
+        this.checkWordForms();
+      }
+    }
+    
+    console.log('页面显示完成，当前数据:', { word: this.displayWord, definition: this.displayDefinition });
+  },
+
+  parseUriParams(uri) {
+    const params = {};
+    if (!uri) return params;
+    
+    const queryString = uri.split('?')[1];
+    if (!queryString) return params;
+    
+    const pairs = queryString.split('&');
+    for (let i = 0; i < pairs.length; i++) {
+      const pair = pairs[i].split('=');
+      if (pair.length === 2) {
+        params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+      }
+    }
+    return params;
+  },
+
+  checkFavoritedStatus() {
+    console.log('=== 检查收藏状态 ===');
+    console.log('要检查的单词:', this.displayWord);
+    
+    if (!this.displayWord) {
+      console.log('没有单词，跳过收藏状态检查');
+      return;
+    }
+    
+    // 统一走公共收藏模块（同步读取，数据量小、开销可忽略）
+    this.isFavorited = isFavorite(this.displayWord);
+    console.log('收藏状态检查结果:', this.displayWord, '已收藏:', this.isFavorited);
+    console.log('=== 收藏状态检查完成 ===');
+  },
+
+  goBack() {
+    router.back();
+  },
+
+  // 词性/考段显示标签（统一来自 filterOptions 单一来源）
+  posLabel(pos) {
+    return POS_LABELS[pos] || pos || '';
+  },
+
+  levelLabel(level) {
+    return LEVEL_LABELS[level] || level || '';
+  },
+
+  addToFavorites() {
+    console.log('收藏按钮被点击了！');
+    console.log('=== 开始收藏操作 ===');
+    console.log('当前单词:', this.displayWord);
+    console.log('当前释义:', this.displayDefinition);
+    console.log('当前收藏状态:', this.isFavorited);
+    
+    if (!this.displayWord) {
+      console.log('没有单词，无法收藏');
+      return;
+    }
+    
+    // 统一走公共收藏模块（原子切换：读取→增删→保存，异常统一处理）
+    this.isFavorited = toggleFavorite(this.displayWord, this.displayDefinition);
+    console.log('收藏操作完成，新状态:', this.isFavorited);
+    
+    // 强制更新UI以反映收藏状态变化
+    this.$forceUpdate && this.$forceUpdate();
+    console.log('=== 收藏操作完成 ===');
+  },
+
+  checkWordForms() {
+    if (!this.displayWord) {
+      this.showWordForms = false;
+      this.wordFormsDataList = [];
+      return;
+    }
+    
+    // 获取单词的小写形式
+    const wordKey = this.displayWord.toLowerCase();
+    
+    let wordFormsData = null;
+    
+    // 首先检查当前单词是否是基础单词
+    if (wordForms[wordKey]) {
+      wordFormsData = wordForms[wordKey];
+    } 
+    // 如果不是基础单词，检查是否是某个基础单词的形态
+    else if (reverseWordForms[wordKey]) {
+      const baseWord = reverseWordForms[wordKey];
+      wordFormsData = wordForms[baseWord];
+    } 
+    // 如果都没有，则没有形态数据
+    else {
+      this.wordFormsData = null;
+      this.showWordForms = false;
+      this.wordFormsDataList = [];
+      return;
+    }
+    
+    // 设置形态数据
+    this.wordFormsData = wordFormsData;
+    this.showWordForms = true;
+    
+    // 转换为数组格式以便渲染
+    this.wordFormsDataList = [];
+    for (const formType in this.wordFormsData) {
+      this.wordFormsDataList.push({
+        type: this.getFormTypeLabel(formType),
+        word: this.wordFormsData[formType]
+      });
+    }
+  },
+
+  getFormTypeLabel(formType) {
+    const typeLabels = {
+      'noun': '名词',
+      'verb': '动词',
+      'adjective': '形容词',
+      'adverb': '副词'
+    };
+    return typeLabels[formType] || formType;
+  },
+
+  goToWordForm(item) {
+    console.log('=== 跳转到单词形态详情 ===');
+    console.log('形态类型:', item.type);
+    console.log('目标单词:', item.word);
+    
+    // 检查目标单词是否在字典中（双级查找）
+    const hit = exactLookup(item.word);
+    if (hit) {
+      // 跳转到新的详情页
+      router.push({
+        uri: '/pages/wordDetail',
+        params: {
+          word: item.word,
+          definition: hit.definition
+        }
+      });
+      console.log('跳转到单词形态详情成功');
+    } else {
+      console.log('目标单词不在字典中:', item.word);
+    }
+    
+    console.log('=== 单词形态跳转完成 ===');
+  },
+
+  onDestroy() {
+    // 页面销毁时清理数据，避免内存泄漏
+    this.displayWord = "";
+    this.displayDefinition = "";
+  }
+}
+</script>
+
+<style>
+.detail-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 80px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+}
+
+.back-icon-container {
+  width: 120px;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 25px;
+  border: 2px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 30px;
+  color: #FFFFFF;
+}
+
+.page-title {
+  font-size: 32px;
+  color: #FFFFFF;
+  font-weight: bold;
+  margin-left: 20px;
+}
+
+.content-container {
+  width: 100%;
+  padding: 8px;
+  min-height: 450px;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.word-detail-card {
+  width: 100%;
+  max-width: 450px;
+  flex-direction: column;
+  background-color: #1C1C1E;
+  border-radius: 32px;
+  padding: 30px;
+  border: 1px solid #2C2C2E;
+  margin: 0 auto;
+}
+
+.word-section {
+  width: 100%;
+  margin-bottom: 24px;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.word-text {
+  font-size: 32px;
+  color: #0A84FF;
+  font-weight: bold;
+  text-align: center;
+  line-height: 40px;
+}
+
+.word-meta-row {
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.word-meta-pill {
+  font-size: 12px;
+  color: #32D74B;
+  padding: 3px 12px;
+  border-radius: 12px;
+  background-color: rgba(50, 215, 75, 0.14);
+  margin-right: 8px;
+  lines: 1;
+}
+
+.word-meta-pill.pill-level {
+  color: #0A84FF;
+  background-color: rgba(10, 132, 255, 0.14);
+  margin-right: 0;
+}
+
+.definition-section {
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.definition-label {
+  font-size: 20px;
+  color: #8E8E93;
+  margin-bottom: 8px;
+}
+
+.definition-text {
+  font-size: 24px;
+  color: #FFFFFF;
+  line-height: 30px;
+  min-height: 60px;
+  max-height: 240px;
+  overflow-y: scroll;
+  scrollable: true;
+}
+
+.word-forms-section {
+  width: 100%;
+  margin-bottom: 20px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.word-forms-label-center {
+  font-size: 18px;
+  color: #8E8E93;
+  text-align: center;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  width: 100%;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.word-forms-list {
+  width: 100%;
+  flex-direction: column;
+}
+
+.word-form-item {
+  width: 100%;
+  min-height: 60px;
+  background-color: #2C2C2E;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border: 1px solid #3A3A3C;
+}
+
+.word-form-content {
+  flex-direction: row;
+  align-items: center;
+  flex: 1;
+}
+
+.word-form-type {
+  font-size: 16px;
+  color: #8E8E93;
+  margin-right: 12px;
+  min-width: 40px;
+}
+
+.word-form-text {
+  font-size: 20px;
+  color: #0A84FF;
+  font-weight: 500;
+}
+
+.word-form-arrow {
+  font-size: 18px;
+  color: #8E8E93;
+  width: 24px;
+  text-align: right;
+}
+
+.action-section {
+  width: 100%;
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.action-btn {
+  width: 160px;
+  height: 70px;
+  background-color: #48484A;
+  border-radius: 35px;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #48484A;
+}
+
+.action-btn.favorited {
+  background-color: #FFD700;
+  border: 1px solid #FFD700;
+}
+
+.action-btn-text {
+  font-size: 26px;
+  color: #FFFFFF;
+}
+
+.action-btn.favorited .action-btn-text {
+  color: #000000;
+}
+
+.no-data {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.no-data-text {
+  font-size: 32px;
+  color: #8E8E93;
+  margin-bottom: 40px;
+}
+
+.retry-btn {
+  width: 200px;
+  height: 80px;
+  border-radius: 40px;
+  background-color: #1C1C1E;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #3A3A3C;
+}
+
+.retry-btn-text {
+  color: #FFFFFF;
+  font-size: 30px;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .detail-page {
+    width: 336px;
+    height: 480px;
+  }
+  
+  .header {
+    height: 70px;
+    padding: 0 18px;
+  }
+  
+  .back-icon-container {
+    width: 100px;
+    height: 45px;
+    border-radius: 22px;
+  }
+  
+  .back-icon {
+    font-size: 26px;
+  }
+  
+  .page-title {
+    font-size: 22px;
+    margin-left: 12px;
+  }
+  
+  .content-container {
+    padding: 4px;
+    min-height: 350px;
+  }
+  
+  .word-detail-card {
+    max-width: 300px;
+    padding: 20px;
+    border-radius: 20px;
+  }
+  
+  .word-section {
+    margin-bottom: 16px;
+  }
+  
+  .word-text {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  
+  .definition-section {
+    margin-bottom: 20px;
+  }
+  
+  .definition-label {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+  
+  .definition-text {
+    font-size: 20px;
+    line-height: 24px;
+    min-height: 50px;
+    max-height: 180px;
+    overflow-y: scroll;
+    scrollable: true;
+  }
+  
+  .word-forms-section {
+    margin-bottom: 12px;
+    padding-left: 16px;
+  }
+  
+  .word-forms-label-center {
+    font-size: 14px;
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .word-form-item {
+    min-height: 40px;
+    margin-bottom: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+  
+  .word-form-type {
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+  
+  .word-form-text {
+    font-size: 16px;
+  }
+  
+  .word-form-arrow {
+    font-size: 14px;
+    width: 16px;
+  }
+  
+  .action-section {
+    margin-top: 12px;
+  }
+  
+  .action-btn {
+    width: 120px;
+    height: 50px;
+    border-radius: 25px;
+  }
+  
+  .action-btn-text {
+    font-size: 18px;
+  }
+  
+  .no-data-text {
+    font-size: 24px;
+    margin-bottom: 30px;
+  }
+  
+  .retry-btn {
+    width: 150px;
+    height: 60px;
+    border-radius: 30px;
+  }
+  
+  .retry-btn-text {
+    font-size: 22px;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .detail-page {
+    width: 432px;
+    height: 514px;
+  }
+  
+  .header {
+    height: 90px;
+    padding: 0 24px;
+  }
+  
+  .back-icon-container {
+    width: 140px;
+    height: 55px;
+    border-radius: 28px;
+  }
+  
+  .back-icon {
+    font-size: 34px;
+  }
+  
+  .page-title {
+    font-size: 32px;
+    margin-left: 20px;
+  }
+  
+  .content-container {
+    padding: 8px;
+    min-height: 450px;
+  }
+  
+  .word-detail-card {
+    max-width: 450px;
+    padding: 30px;
+    border-radius: 32px;
+  }
+  
+  .word-section {
+    margin-bottom: 24px;
+  }
+  
+  .word-text {
+    font-size: 32px;
+    line-height: 40px;
+  }
+  
+  .definition-section {
+    margin-bottom: 30px;
+  }
+  
+  .definition-label {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  
+  .definition-text {
+    font-size: 24px;
+    line-height: 30px;
+    min-height: 60px;
+    max-height: 240px;
+    overflow-y: scroll;
+    scrollable: true;
+  }
+  
+  .word-forms-section {
+    margin-bottom: 20px;
+    padding-left: 24px;
+  }
+  
+  .word-forms-label-center {
+    font-size: 18px;
+    margin-top: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .word-form-item {
+    min-height: 50px;
+    margin-bottom: 8px;
+    padding: 12px 16px;
+    border-radius: 10px;
+  }
+  
+  .word-form-type {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  
+  .word-form-text {
+    font-size: 18px;
+  }
+  
+  .word-form-arrow {
+    font-size: 16px;
+    width: 20px;
+  }
+  
+  .action-section {
+    margin-top: 20px;
+  }
+  
+  .action-btn {
+    width: 160px;
+    height: 70px;
+    border-radius: 35px;
+  }
+  
+  .action-btn-text {
+    font-size: 26px;
+  }
+  
+  .no-data-text {
+    font-size: 32px;
+    margin-bottom: 40px;
+  }
+  
+  .retry-btn {
+    width: 200px;
+    height: 80px;
+    border-radius: 40px;
+  }
+  
+  .retry-btn-text {
+    font-size: 30px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+    padding: 0 20px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    margin-left: 14px;
+  }
+
+  .content-container {
+    padding: 5px;
+    min-height: 380px;
+  }
+
+  .word-detail-card {
+    max-width: 340px;
+    padding: 24px;
+    border-radius: 24px;
+  }
+
+  .word-section {
+    margin-bottom: 18px;
+  }
+
+  .word-text {
+    font-size: 26px;
+    line-height: 34px;
+  }
+
+  .definition-section {
+    margin-bottom: 24px;
+  }
+
+  .definition-label {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .definition-text {
+    font-size: 22px;
+    line-height: 28px;
+    min-height: 55px;
+    max-height: 200px;
+  }
+
+  .word-forms-section {
+    margin-bottom: 14px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .word-forms-label-center {
+    font-size: 16px;
+    margin-top: 14px;
+    margin-bottom: 14px;
+  }
+
+  .word-form-item {
+    min-height: 46px;
+    margin-bottom: 7px;
+    padding: 10px 14px;
+    border-radius: 9px;
+  }
+
+  .word-form-type {
+    font-size: 14px;
+    margin-right: 10px;
+  }
+
+  .word-form-text {
+    font-size: 18px;
+  }
+
+  .word-form-arrow {
+    font-size: 16px;
+    width: 18px;
+  }
+
+  .action-section {
+    margin-top: 14px;
+  }
+
+  .action-btn {
+    width: 140px;
+    height: 58px;
+    border-radius: 29px;
+  }
+
+  .action-btn-text {
+    font-size: 20px;
+  }
+
+  .no-data-text {
+    font-size: 26px;
+    margin-bottom: 32px;
+  }
+
+  .retry-btn {
+    width: 170px;
+    height: 65px;
+    border-radius: 33px;
+  }
+
+  .retry-btn-text {
+    font-size: 24px;
+  }
+}
+</style>

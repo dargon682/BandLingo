@@ -1,0 +1,464 @@
+<template>
+  <div class="favorites-page">
+    <div class="header">
+      <div class="back-icon-container" onclick="goBack">
+        <text static class="back-icon">←</text>
+      </div>
+    </div>
+    
+    <div class="content-container">
+      <div class="favorites-list" if="{{ favorites.length > 0 }}">
+        <div class="favorite-item" for="{{ favorites }}" onclick="goToDetail($item)">
+          <div class="item-content">
+            <text class="item-word">{{ $item.word }}</text>
+            <text class="item-definition">{{ $item.definition }}</text>
+          </div>
+        </div>
+      </div>
+      
+      <div class="no-favorites" if="{{ favorites.length === 0 }}">
+        <text static class="no-favorites-text">暂无收藏</text>
+        <div class="tip-btn" onclick="goBack">
+          <text static class="tip-btn-text">去搜索收藏单词</text>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import { readFavorites } from "../../common/favorites"
+
+export default {
+  data: {
+    favorites: []
+  },
+
+  onInit() {
+    console.log('=== 收藏夹页面初始化 ===');
+    this.loadFavorites();
+  },
+
+  onShow() {
+    console.log('=== 收藏夹页面显示 ===');
+    this.loadFavorites();
+  },
+
+  loadFavorites() {
+    // 统一走公共收藏模块（同步读取，异常统一处理）
+    this.favorites = readFavorites();
+    // 按添加时间倒序排列
+    this.favorites.sort((a, b) => b.addedTime - a.addedTime);
+    console.log('收藏列表加载完成，长度:', this.favorites.length);
+  },
+
+  
+
+  goToDetail(item) {
+    console.log('=== 收藏夹跳转到详情页 ===');
+    console.log('单词:', item.word);
+    console.log('释义:', item.definition);
+    
+    // 确保全局变量对象存在
+    if (!this.$app.globalData) {
+      this.$app.globalData = {};
+    }
+    
+    // 设置全局变量
+    this.$app.globalData.word = item.word;
+    this.$app.globalData.definition = item.definition || '';
+    console.log('已设置全局变量:', this.$app.globalData);
+    
+    try {
+      router.push({
+        uri: '/pages/detail',
+        params: {
+          word: item.word,
+          definition: item.definition || ''
+        }
+      });
+      console.log('收藏夹跳转调用成功');
+    } catch (error) {
+      console.error('收藏夹跳转失败:', error);
+    }
+    console.log('=== 收藏夹跳转完成 ===');
+  },
+
+  goBack() {
+    console.log('收藏夹页面返回');
+    router.back();
+  },
+
+  // 测试方法
+  testPage() {
+    console.log('=== 收藏夹页面测试 ===');
+    console.log('this.favorites:', this.favorites);
+    console.log('this.favorites.length:', this.favorites.length);
+    console.log('storage available:', typeof storage !== 'undefined');
+    console.log('router available:', typeof router !== 'undefined');
+    console.log('========================');
+  }
+}
+</script>
+
+<style>
+.favorites-page {
+  flex-direction: column;
+  background-color: #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.header {
+  width: 100%;
+  height: 80px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.back-icon-container {
+  width: 120px;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: #1C1C1E;
+  border-radius: 25px;
+  border: 2px solid #2C2C2E;
+}
+
+.back-icon {
+  font-size: 30px;
+  color: #FFFFFF;
+}
+
+.page-title {
+  font-size: 24px;
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.header-icon {
+  width: 20px;
+  height: 20px;
+  background-color: #FFFFFF;
+  border-radius: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.header-icon-text {
+  font-size: 14px;
+  color: #000000;
+  font-weight: bold;
+}
+
+.header-spacer {
+  width: 50px;
+  height: 50px;
+}
+
+.content-container {
+  flex: 1;
+  width: 100%;
+  padding: 0 20px 20px 20px;
+}
+
+.favorites-list {
+  flex: 1;
+  width: 100%;
+  padding: 0 30px;
+  flex-direction: column;
+  overflow: scroll;
+  scrollable: true;
+}
+
+.favorite-item {
+  width: 100%;
+  background-color: #2D2D2D;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: none;
+  padding: 15px 20px;
+}
+
+.item-content {
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.item-word {
+  font-size: 18px;
+  color: #FFFFFF;
+  font-weight: bold;
+  width: 100%;
+  text-align: left;
+  lines: 1;
+  text-overflow: ellipsis;
+  margin-bottom: 8px;
+}
+
+.item-definition {
+  font-size: 16px;
+  color: #CCCCCC;
+  width: 100%;
+  text-align: left;
+  lines: 3;
+  text-overflow: ellipsis;
+}
+
+.no-favorites {
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.no-favorites-text {
+  font-size: 28px;
+  color: #8E8E93;
+  margin-bottom: 35px;
+}
+
+.tip-btn {
+  width: 230px;
+  height: 70px;
+  border-radius: 35px;
+  background-color: #1C1C1E;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #3A3A3C;
+}
+
+.tip-btn-text {
+  color: #FFFFFF;
+  font-size: 24px;
+}
+
+/* 小米手环9 Pro 336*480 适配 */
+@media (min-width: 336px) and (max-width: 336px) {
+  .favorites-page {
+    width: 336px;
+    height: 480px;
+  }
+  
+  .header {
+    height: 70px;
+    padding: 0 18px;
+  }
+  
+  .back-icon-container {
+    width: 100px;
+    height: 45px;
+    border-radius: 22px;
+  }
+  
+  .back-icon {
+    font-size: 26px;
+  }
+  
+  .page-title {
+    font-size: 18px;
+  }
+  
+  .header-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+  }
+  
+  .header-icon-text {
+    font-size: 12px;
+  }
+  
+  .header-spacer {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .content-container {
+    padding: 0 12px 12px 12px;
+  }
+  
+  .favorites-list {
+    padding: 0 20px;
+    overflow: scroll;
+    scrollable: true;
+  }
+  
+  .favorite-item {
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 12px 15px;
+  }
+  
+  .item-word {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  
+  .item-definition {
+    font-size: 14px;
+  }
+  
+  .no-favorites-text {
+    font-size: 22px;
+    margin-bottom: 28px;
+  }
+  
+  .tip-btn {
+    width: 180px;
+    height: 55px;
+    border-radius: 27px;
+  }
+  
+  .tip-btn-text {
+    font-size: 20px;
+  }
+}
+
+/* 432*514 设备适配 */
+@media (min-width: 432px) and (max-width: 432px) {
+  .favorites-page {
+    width: 432px;
+    height: 514px;
+  }
+  
+  .header {
+    height: 90px;
+    padding: 0 24px;
+  }
+  
+  .back-icon-container {
+    width: 140px;
+    height: 55px;
+    border-radius: 28px;
+  }
+  
+  .back-icon {
+    font-size: 34px;
+  }
+  
+  .page-title {
+    font-size: 28px;
+  }
+  
+  .header-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+  }
+  
+  .header-icon-text {
+    font-size: 16px;
+  }
+  
+  .header-spacer {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .content-container {
+    padding: 0 24px 24px 24px;
+  }
+  
+  .favorites-list {
+    padding: 0 40px;
+    overflow: scroll;
+    scrollable: true;
+  }
+  
+  .favorite-item {
+    border-radius: 12px;
+    margin-bottom: 16px;
+    padding: 20px 24px;
+  }
+  
+  .item-word {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+  
+  .item-definition {
+    font-size: 18px;
+  }
+  
+  .no-favorites-text {
+    font-size: 32px;
+    margin-bottom: 40px;
+  }
+  
+  .tip-btn {
+    width: 260px;
+    height: 80px;
+    border-radius: 40px;
+  }
+  
+  .tip-btn-text {
+    font-size: 28px;
+  }
+}
+
+/* 小米圆形手表 466*466 适配 */
+@media screen and (shape: circle) {
+  .header {
+    height: 70px;
+    padding: 0 20px;
+  }
+
+  .back-icon-container {
+    width: 105px;
+    height: 45px;
+    border-radius: 23px;
+  }
+
+  .back-icon {
+    font-size: 26px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .content-container {
+    padding: 0 18px 18px 18px;
+  }
+
+  .favorites-list {
+    padding: 0 22px;
+  }
+
+  .favorite-item {
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 16px 18px;
+  }
+
+  .item-word {
+    font-size: 18px;
+    margin-bottom: 7px;
+  }
+
+  .item-definition {
+    font-size: 16px;
+  }
+
+  .no-favorites-text {
+    font-size: 24px;
+    margin-bottom: 30px;
+  }
+
+  .tip-btn {
+    width: 200px;
+    height: 60px;
+    border-radius: 30px;
+  }
+
+  .tip-btn-text {
+    font-size: 22px;
+  }
+}
+</style>

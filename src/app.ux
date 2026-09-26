@@ -1,0 +1,60 @@
+<script>
+// 导入全局工具
+import './common/global'
+import storage from './storage'
+import { dictionary } from './common/dictionary'
+import { FULL_TOTAL } from './common/dictionaryFull'
+
+// 一级词典（高频常用词，常驻）挂到全局，供各页面通过 global.dictionary 读取
+global.dictionary = dictionary;
+
+export default {
+  onCreate() {
+    console.log("app created")
+    // 初始化全局数据
+    this.globalData = {
+      word: '',
+      definition: '',
+      // 词库统计：显示完整词库词条数（一级常驻 + 二级按需）
+      dictionaryCount: FULL_TOTAL
+    }
+    // 初始化存储功能
+    this.$def = {
+      getStorage: function(key) {
+        try {
+          return storage.getSync({
+            key: key,
+            default: ''
+          })
+        } catch (e) {
+          console.error('读取存储失败:', e)
+          return ''
+        }
+      },
+      setStorage: function(key, value) {
+        try {
+          storage.setSync({
+            key: key,
+            value: value
+          })
+          return true
+        } catch (e) {
+          console.error('写入存储失败:', e)
+          return false
+        }
+      }
+    }
+  },
+  onDestroy() {
+    console.log("app destroyed")
+    // 清理所有定时器
+    if (typeof global !== 'undefined' && global.timerManager) {
+      global.timerManager.clearAllTimers()
+    }
+    // 调用垃圾回收
+    if (typeof global !== 'undefined' && global.runGC) {
+      global.runGC()
+    }
+  }
+}
+</script>

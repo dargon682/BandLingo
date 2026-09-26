@@ -1,0 +1,74 @@
+{
+  "package": "com.BandLingo.lrc",
+  "name": "BandLingo",
+  "versionName": "1.1-beta",
+  "versionCode": 2,
+  "minPlatformVersion": 1000,
+  "icon": "/common/logo.png",
+  "deviceTypeList": [
+    "watch"
+  ],
+  "features": [
+    {
+      "name": "system.router"
+    },
+    {
+      "name": "system.vibrator"
+    },
+    {
+      "name": "system.fetch"
+    },
+    {
+      "name": "system.storage"
+    },
+    {
+      "name": "system.device"
+    },
+    {
+      "name": "system.file"
+    }
+  ],
+  "config": {
+    "logLevel": "log",
+    "designWidth": 432,
+    "designHeight": 514
+  },
+  "router": {
+    "entry": "pages/index",
+    "pages": {
+      "pages/index": {
+        "component": "index"
+      },
+      "pages/detail": {
+        "component": "detail"
+      },
+      "pages/searchResult": {
+        "component": "searchResult"
+      },
+      "pages/favorites": {
+        "component": "favorites"
+      },
+      "pages/settings": {
+        "component": "settings"
+      },
+      "pages/about": {
+        "component": "about"
+      },
+      "pages/storage": {
+        "component": "storage"
+      },
+      "pages/donate": {
+        "component": "donate"
+      },
+      "pages/wordStats": {
+        "component": "wordStats"
+      },
+      "pages/uiStyle": {
+        "component": "uiStyle"
+      },
+      "pages/addWord": {
+        "component": "addWord"
+      }
+    }
+  }
+}

@@ -121,7 +121,7 @@
 <script>
 import router from "@system.router"
 import storage from "../../storage"
-import { getKeys, getSortedKeys, exactLookup, ensureFullBucket, clearCache, searchByPrefix, getPosLevel, suggestFuzzy, cacheGet, cachePut } from "../../common/dictionaryIndex"
+import { getKeys, getSortedKeys, exactLookup, ensureFullBucket, clearCache, searchByPrefix, getPosLevel, suggestFuzzy, cacheGet, cachePut, preloadBucket } from "../../common/dictionaryIndex"
 import { CARD_COLORS, GRADIENT_IMAGES } from "../../common/uiTheme"
 import { POS_OPTIONS, POS_LABELS, LEVEL_OPTIONS, LEVEL_LABELS } from "../../common/filterOptions"
 import { readFavorites, saveFavorites } from "../../common/favorites"
@@ -182,7 +182,18 @@ export default {
     }
     
     console.log('即将执行搜索，当前word:', this.word);
-    this.performSearch();
+    // 预载目标首字母的二级桶/元数据（资源文件按需读取），加载完成后再搜索，
+    // 确保一级高频词 + 二级生僻词结果完整；词未变时才刷新，避免重复搜索
+    const c0 = (this.word || "").charAt(0).toLowerCase();
+    if (/^[a-z]$/.test(c0)) {
+      preloadBucket(c0, () => {
+        if (this.word && this.word.charAt(0).toLowerCase() === c0) {
+          this.performSearch();
+        }
+      });
+    } else {
+      this.performSearch();
+    }
   },
 
   onShow() {

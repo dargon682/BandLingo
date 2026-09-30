@@ -54,7 +54,7 @@
 import router from "@system.router"
 import { wordForms } from "../../common/wordForms"
 import { reverseWordForms } from "../../common/reverseWordForms"
-import { exactLookup } from "../../common/dictionaryIndex"
+import { exactLookup, preloadBucket } from "../../common/dictionaryIndex"
 import { isFavorite, toggleFavorite } from "../../common/favorites"
 import { POS_LABELS, LEVEL_LABELS } from "../../common/filterOptions"
 
@@ -104,11 +104,15 @@ export default {
     
     // 从字典获取释义与词性/考段元数据（双级：一级常驻 + 二级按需）
     if (this.displayWord) {
-      const hit = exactLookup(this.displayWord);
-      if (hit) {
-        if (!this.displayDefinition) this.displayDefinition = hit.definition;
-        this.displayPos = hit.pos || "";
-        this.displayLevel = hit.level || "";
+      this.applyDictLookup();
+      // 预载目标首字母的二级桶/元数据，加载完成后再刷新（覆盖二级生僻词）
+      const c0 = this.displayWord.charAt(0).toLowerCase();
+      if (/^[a-z]$/.test(c0)) {
+        preloadBucket(c0, () => {
+          if (this.displayWord && this.displayWord.charAt(0).toLowerCase() === c0) {
+            this.applyDictLookup();
+          }
+        });
       }
     }
     
@@ -136,6 +140,16 @@ export default {
     }
     
     console.log('=== WordDetail页面初始化完成 ===');
+  },
+
+  // 从双级词库查询释义与词性/考段（供初始与预载刷新复用）
+  applyDictLookup() {
+    const hit = exactLookup(this.displayWord);
+    if (hit) {
+      if (!this.displayDefinition) this.displayDefinition = hit.definition;
+      this.displayPos = hit.pos || "";
+      this.displayLevel = hit.level || "";
+    }
   },
 
   onShow() {

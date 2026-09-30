@@ -3,14 +3,12 @@
 import './common/global'
 import storage from './storage'
 import { dictionary } from './common/dictionary'
-import { DICT_FULL_BUCKETS, FULL_TOTAL } from './common/dictionaryFull'
-import { CORE_META_BUCKETS } from './common/coreMeta'
+import { TOTAL_WORDS } from './common/dictionaryIndex'
 
 // 一级词典（高频常用词，常驻）挂到全局，供各页面通过 global.dictionary 读取
+// 二级全量词库/元数据不再挂载：已拆分为按首字母的资源文件（src/common/dict/），
+// 由 dictionaryIndex.preloadBucket 按需异步读取，避免启动一次性解析大常量导致 OOM。
 global.dictionary = dictionary;
-// 词库数据统一挂载到全局，避免 detail/searchResult 等页面重复打包（压缩 rpk 体积）
-global.DICT_FULL_BUCKETS = DICT_FULL_BUCKETS;
-global.CORE_META_BUCKETS = CORE_META_BUCKETS;
 
 export default {
   onCreate() {
@@ -20,7 +18,7 @@ export default {
       word: '',
       definition: '',
       // 词库统计：显示完整词库词条数（一级常驻 + 二级按需）
-      dictionaryCount: FULL_TOTAL
+      dictionaryCount: TOTAL_WORDS
     }
     // 初始化存储功能
     this.$def = {

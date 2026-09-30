@@ -1,19 +1,60 @@
 // 词库双级检索模块（内存优化版 + 分类元数据筛选）
-// 一级：高频常用词对象（global.dictionary，常驻 ~6万条，~3MB）——词性/考段见核心词库字典 coreMeta.js
-// 二级：完整词库按首字母分桶的紧凑字符串（dictionaryFull.js，~16万条，~10MB 文本）
-//       仅在需要时解析对应首字母桶（LRU 最多保留 6 桶，生僻词不常驻对象）
+// 一级：高频常用词对象（global.dictionary，常驻 ~6万条，~3MB）——词性/考段见核心词库元数据
+// 二级：完整词库按首字母分桶的资源文件（src/common/dict/full_{a..z}.txt，~16万条）
+//       运行时按需异步读取单个桶（LRU 最多保留 6 桶，生僻词不常驻对象）
 // 检索优化：首字母分桶 + 前缀二分下界定位、桶内高频优先（Top-K）、长度范围剪枝、
 //           结果缓存（LRU）、Jaro-Winkler 错拼纠错、中文反查（复用 结果缓存 兜底）。
-// 启动时仅加载一级对象 + 二级字符串常量（不建对象），大幅降低峰值内存。
+// 启动时仅加载一级对象，二级桶/元数据按需异步读取，避免启动 OOM。
 
-// 词库数据由 app.ux 挂载到 global（避免被各页面重复打包，压缩 rpk 体积）
-// 页面侧仅引用索引逻辑，运行时通过 global 读取词库
-function fullBuckets() {
-  return (global && global.DICT_FULL_BUCKETS) || {}
+import file from '@system.file'
+
+// 二级词库/元数据：按首字母桶资源文件，运行时按需读取（由 tools/split_resources.js 生成）
+let _fullRaw = {}
+let _metaRaw = {}
+const _fullLoading = {}
+const _metaLoading = {}
+
+// 全量词条数（二级桶总和），供统计展示
+export const TOTAL_WORDS = 165563
+
+function readBucket(kind, c0, cb) {
+  file.readText({
+    uri: '/common/dict/' + kind + '_' + c0 + '.txt',
+    success: (d) => { cb(null, d.text) },
+    fail: (err, code) => { cb(code) }
+  })
 }
-function metaBuckets() {
-  return (global && global.CORE_META_BUCKETS) || {}
+
+// 异步预载一个首字母的 二级桶 + 元数据桶；已加载/加载中时立即回调（避免重复读文件）
+export function preloadBucket(c0, cb) {
+  c0 = (c0 || '').toLowerCase()
+  if (!/^[a-z]$/.test(c0)) { if (cb) cb(); return }
+  let pending = 0
+  const done = () => { if (--pending === 0 && cb) cb() }
+  if (!_fullRaw[c0] && !_fullLoading[c0]) {
+    pending++
+    _fullLoading[c0] = true
+    readBucket('full', c0, (err, text) => {
+      if (!err && text) _fullRaw[c0] = text
+      _fullLoading[c0] = false
+      done()
+    })
+  }
+  if (!_metaRaw[c0] && !_metaLoading[c0]) {
+    pending++
+    _metaLoading[c0] = true
+    readBucket('meta', c0, (err, text) => {
+      if (!err && text) _metaRaw[c0] = text
+      _metaLoading[c0] = false
+      done()
+    })
+  }
+  if (pending === 0) { if (cb) cb() }
 }
+
+// 桶数据访问（仅返回已加载的桶，未加载返回空对象）
+function fullBuckets() { return _fullRaw }
+function metaBuckets() { return _metaRaw }
 
 const SEP_ENTRY = "\u0001" // 桶内词条分隔
 const SEP_PAIR = "\u0002"  // 词/义分隔（命题值内部）

@@ -2,13 +2,12 @@
 // 导入全局工具
 import './common/global'
 import storage from './storage'
-import { dictionary } from './common/dictionary'
 import { TOTAL_WORDS } from './common/dictionaryIndex'
 
-// 一级词典（高频常用词，常驻）挂到全局，供各页面通过 global.dictionary 读取
-// 二级全量词库/元数据不再挂载：已拆分为按首字母的资源文件（src/common/dict/），
-// 由 dictionaryIndex.preloadBucket 按需异步读取，避免启动一次性解析大常量导致 OOM。
-global.dictionary = dictionary;
+// 词库不再以 JS 常量挂载到 global：
+// 一级（tier1）、二级（full）、元数据（meta）均已拆分为按首字母的资源文件（src/common/dict/），
+// 由 dictionaryIndex.preloadBucket 在检索时按需异步读取 + LRU 缓存，
+// 启动不解析任何大词库对象，避免低内存设备启动 OOM 崩溃/反复重启。
 
 export default {
   onCreate() {
@@ -17,7 +16,7 @@ export default {
     this.globalData = {
       word: '',
       definition: '',
-      // 词库统计：显示完整词库词条数（一级常驻 + 二级按需）
+      // 词库统计：显示完整词库词条数
       dictionaryCount: TOTAL_WORDS
     }
     // 初始化存储功能

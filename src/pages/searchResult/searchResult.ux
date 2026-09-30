@@ -121,14 +121,12 @@
 <script>
 import router from "@system.router"
 import storage from "../../storage"
-import { getKeys, getSortedKeys, exactLookup, ensureFullBucket, clearCache, searchByPrefix, getPosLevel, suggestFuzzy, cacheGet, cachePut, preloadBucket } from "../../common/dictionaryIndex"
+import { getKeys, getSortedKeys, exactLookup, ensureFullBucket, clearCache, searchByPrefix, getPosLevel, suggestFuzzy, cacheGet, cachePut, preloadBucket, getDefinition } from "../../common/dictionaryIndex"
 import { CARD_COLORS, GRADIENT_IMAGES } from "../../common/uiTheme"
 import { POS_OPTIONS, POS_LABELS, LEVEL_OPTIONS, LEVEL_LABELS } from "../../common/filterOptions"
 import { readFavorites, saveFavorites } from "../../common/favorites"
 
-// 一级词典（高频常用词，常驻）挂载于 global.dictionary（见 app.ux），
-// 二级完整词库按需解析（见 dictionaryIndex.js 的 ensureFullBucket，LRU 缓存）。
-const dictionaryData = (global && global.dictionary) || {}
+// 词库全部按需异步加载（见 dictionaryIndex.js），释义经 getDefinition 从已加载桶读取。
 
 export default {
   data: {
@@ -382,7 +380,7 @@ export default {
         if (key.length > 8 || key === searchKeyLower) continue;
         if (key.charAt(0) === c0) {
           const meta = getPosLevel(key);
-          startsWithMatches.push({ word: key, definition: dictionaryData[key], pos: meta.pos, level: meta.level });
+          startsWithMatches.push({ word: key, definition: getDefinition(key), pos: meta.pos, level: meta.level });
           c++;
         }
       }
@@ -395,7 +393,7 @@ export default {
           if (key.length > 8 || key === searchKeyLower || key.charAt(0) === c0) continue;
           if (key.includes(searchKeyLower)) {
             const meta = getPosLevel(key);
-            containsMatches.push({ word: key, definition: dictionaryData[key], pos: meta.pos, level: meta.level });
+            containsMatches.push({ word: key, definition: getDefinition(key), pos: meta.pos, level: meta.level });
             cc++;
           }
         }
@@ -405,7 +403,7 @@ export default {
       if (bucket) {
         for (const key in bucket) {
           if (startsWithMatches.length + containsMatches.length >= maxResults) break;
-          if (key.length > 8 || key === searchKeyLower || dictionaryData[key]) continue;
+          if (key.length > 8 || key === searchKeyLower || getDefinition(key)) continue;
           startsWithMatches.push({ word: key, definition: bucket[key].def, pos: bucket[key].pos || '', level: bucket[key].level || '' });
         }
       }
@@ -437,7 +435,7 @@ export default {
     // 在所有英文单词的释义中搜索中文
     for (let i = 0; i < dictionaryKeys.length; i++) {
       const englishWord = dictionaryKeys[i];
-      const chineseDefinition = dictionaryData[englishWord];
+      const chineseDefinition = getDefinition(englishWord);
       const meta = getPosLevel(englishWord);
       
       // 精确匹配中文（优先级最高）

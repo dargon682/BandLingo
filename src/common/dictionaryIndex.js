@@ -6,8 +6,14 @@
 //           结果缓存（LRU）、Jaro-Winkler 错拼纠错、中文反查（复用 结果缓存 兜底）。
 // 启动时仅加载一级对象 + 二级字符串常量（不建对象），大幅降低峰值内存。
 
-import { DICT_FULL_BUCKETS } from "./dictionaryFull"
-import { CORE_META_BUCKETS } from "./coreMeta"
+// 词库数据由 app.ux 挂载到 global（避免被各页面重复打包，压缩 rpk 体积）
+// 页面侧仅引用索引逻辑，运行时通过 global 读取词库
+function fullBuckets() {
+  return (global && global.DICT_FULL_BUCKETS) || {}
+}
+function metaBuckets() {
+  return (global && global.CORE_META_BUCKETS) || {}
+}
 
 const SEP_ENTRY = "\u0001" // 桶内词条分隔
 const SEP_PAIR = "\u0002"  // 词/义分隔（命题值内部）
@@ -51,7 +57,7 @@ export function ensureFullBucket(c0) {
     if (idx > -1) { _fullOrder.splice(idx, 1); _fullOrder.push(c0) }
     return _fullCache[c0]
   }
-  const raw = DICT_FULL_BUCKETS[c0]
+  const raw = fullBuckets()[c0]
   if (!raw) return null
   const obj = {}
   const entries = raw.split(SEP_ENTRY)
@@ -75,7 +81,7 @@ export function ensureFullBucket(c0) {
 // ---------- 一级元数据桶：慵懒解析 ----------
 function coreMetaBucket(c0) {
   if (_coreMetaCache[c0]) return _coreMetaCache[c0]
-  const raw = CORE_META_BUCKETS[c0]
+  const raw = metaBuckets()[c0]
   const obj = {}
   if (raw) {
     const entries = raw.split(SEP_ENTRY)

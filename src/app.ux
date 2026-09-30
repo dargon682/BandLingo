@@ -3,10 +3,14 @@
 import './common/global'
 import storage from './storage'
 import { dictionary } from './common/dictionary'
-import { FULL_TOTAL } from './common/dictionaryFull'
+import { DICT_FULL_BUCKETS, FULL_TOTAL } from './common/dictionaryFull'
+import { CORE_META_BUCKETS } from './common/coreMeta'
 
 // 一级词典（高频常用词，常驻）挂到全局，供各页面通过 global.dictionary 读取
 global.dictionary = dictionary;
+// 词库数据统一挂载到全局，避免 detail/searchResult 等页面重复打包（压缩 rpk 体积）
+global.DICT_FULL_BUCKETS = DICT_FULL_BUCKETS;
+global.CORE_META_BUCKETS = CORE_META_BUCKETS;
 
 export default {
   onCreate() {

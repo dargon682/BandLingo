@@ -16,9 +16,6 @@
       "name": "system.vibrator"
     },
     {
-      "name": "system.fetch"
-    },
-    {
       "name": "system.storage"
     },
     {

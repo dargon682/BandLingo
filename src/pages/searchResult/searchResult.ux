@@ -125,6 +125,7 @@ import { getKeys, getSortedKeys, exactLookup, ensureFullBucket, clearCache, sear
 import { CARD_COLORS, GRADIENT_IMAGES } from "../../common/uiTheme"
 import { POS_OPTIONS, POS_LABELS, LEVEL_OPTIONS, LEVEL_LABELS } from "../../common/filterOptions"
 import { readFavorites, saveFavorites } from "../../common/favorites"
+import aiService from "../../common/aiService"
 
 // 词库全部按需异步加载（见 dictionaryIndex.js），释义经 getDefinition 从已加载桶读取。
 
@@ -471,7 +472,8 @@ export default {
     this.maxResults = maxResults;
   },
 
-  async performAIQuery() {
+  // 说明：不使用 async/await（低内存/精简设备 JS 引擎不支持该语法，页面加载即崩溃），改为 Promise 链
+  performAIQuery() {
     const searchKey = (this.word || "").trim();
     if (!searchKey) {
       return;
@@ -482,13 +484,11 @@ export default {
     this.isLoadingAI = true;
     this.aiError = null;
     
-    try {
-      console.log('开始AI查询:', searchKey);
-      
-      // 动态导入AI服务
-      const aiService = await import("../../common/aiService");
-      const aiResult = await aiService.queryAI(searchKey, isChinese);
-      
+    console.log('开始AI查询:', searchKey);
+    
+    const self = this;
+    // 直接调用AI服务（aiService 内部惰性探测 @system.fetch，不支持时返回友好错误，不崩溃）
+    aiService.queryAI(searchKey, isChinese).then(function(aiResult) {
       // 将AI结果添加到结果列表的开头
       const aiItem = {
         word: searchKey,
@@ -496,24 +496,24 @@ export default {
         isAI: true
       };
       
-      this.results.unshift(aiItem);
+      self.results.unshift(aiItem);
       
       // 检查AI结果的收藏状态
-      this.checkAIFavoriteStatus(aiItem);
+      self.checkAIFavoriteStatus(aiItem);
       
       // 将AI查询结果存入本地词典
-      this.saveToAIDictionary(searchKey, aiResult);
+      self.saveToAIDictionary(searchKey, aiResult);
       
       // 直接显示捐赠提示
-      this.showDonationAlert = true;
+      self.showDonationAlert = true;
       
       console.log('AI查询成功，结果已添加并保存到词典');
-    } catch (error) {
+    }).catch(function(error) {
       console.error('AI查询失败:', error);
-      this.aiError = error.message || 'AI查询服务暂时不可用';
-    } finally {
-      this.isLoadingAI = false;
-    }
+      self.aiError = (error && error.message) || 'AI查询服务暂时不可用';
+    }).then(function() {
+      self.isLoadingAI = false;
+    });
   },
 
   // 将AI查询结果保存到本地词典（异步）
@@ -668,9 +668,9 @@ export default {
 
   checkAIFavoriteStatus(aiItem) {
     try {
-      const favSet = new Set(readFavorites().map(item => item.word));
-      // 更新AI结果的收藏状态
-      aiItem.isFavorited = favSet.has(aiItem.word);
+      // 说明：不使用 Set（低内存/精简设备 JS 引擎可能不支持），改用数组 includes
+      const favWords = readFavorites().map(item => item.word);
+      aiItem.isFavorited = favWords.indexOf(aiItem.word) > -1;
     } catch (e) {
       console.error('检查AI结果收藏状态失败:', e);
     }
@@ -684,9 +684,9 @@ export default {
   checkFavoritesStatus() {
     try {
       const favorites = readFavorites();
-      const favSet = new Set(favorites.map(item => item.word));
-      // 更新每个结果的可收藏状态（O(n)，利用 Set 索引避免 O(n·m)）
-      this.results.forEach(item => { item.isFavorited = favSet.has(item.word); });
+      // 说明：不使用 Set（低内存/精简设备 JS 引擎可能不支持），改用数组 indexOf
+      const favWords = favorites.map(item => item.word);
+      this.results.forEach(item => { item.isFavorited = favWords.indexOf(item.word) > -1; });
     } catch (e) {
       console.error('检查收藏状态失败:', e);
     }

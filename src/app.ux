@@ -2,12 +2,13 @@
 // 导入全局工具
 import './common/global'
 import storage from './storage'
-import { TOTAL_WORDS } from './common/dictionaryIndex'
 
 // 词库不再以 JS 常量挂载到 global：
 // 一级（tier1）、二级（full）、元数据（meta）均已拆分为按首字母的资源文件（src/common/dict/），
 // 由 dictionaryIndex.preloadBucket 在检索时按需异步读取 + LRU 缓存，
 // 启动不解析任何大词库对象，避免低内存设备启动 OOM 崩溃/反复重启。
+// 注意：本文件不 import dictionaryIndex（避免其依赖的系统模块进入启动链路），
+// 仅以固定常量展示词库统计，词库模块只在 searchResult/detail 页面加载。
 
 export default {
   onCreate() {
@@ -16,8 +17,8 @@ export default {
     this.globalData = {
       word: '',
       definition: '',
-      // 词库统计：显示完整词库词条数
-      dictionaryCount: TOTAL_WORDS
+      // 词库统计：固定常量（165563 条），避免启动加载词库模块
+      dictionaryCount: 165563
     }
     // 初始化存储功能
     this.$def = {

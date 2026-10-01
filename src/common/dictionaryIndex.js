@@ -7,7 +7,23 @@
 // 检索优化：首字母分桶 + 桶内前缀二分下界定位、桶内高频优先（Top-K）、长度范围剪枝、
 //           结果缓存（LRU）、Jaro-Winkler 错拼纠错、中文反查（仅扫已加载桶，兜底）。
 
-import file from '@system.file'
+// 包内资源文件读取：不能顶层 import @system.file——低内存/精简设备（如小米手环10）可能缺失该系统模块，
+// 顶层 import 会在模块加载时立即抛异常导致启动崩溃。改为惰性 require + try/catch 探测：
+// 模块缺失时所有桶读取失败（检索降级为空结果），但应用不崩溃、可正常启动。
+let _fileMod = null
+let _fileChecked = false
+function getFileModule() {
+  if (_fileChecked) return _fileMod
+  _fileChecked = true
+  try {
+    if (typeof require === 'function') {
+      _fileMod = require('@system.file')
+    }
+  } catch (e) {
+    _fileMod = null
+  }
+  return _fileMod
+}
 
 // ---------- 桶原始文本缓存（按需异步读取） ----------
 let _tier1Raw = {}
@@ -45,11 +61,20 @@ const MAX_META_BUCKETS = 6
 const MAX_RESULT = 12
 
 function readBucket(kind, c0, cb) {
-  file.readText({
-    uri: '/common/dict/' + kind + '_' + c0 + '.txt',
-    success: (d) => { cb(null, d.text) },
-    fail: (err, code) => { cb(code) }
-  })
+  const fm = getFileModule()
+  if (!fm || typeof fm.readText !== 'function') {
+    if (cb) cb('file-module-unavailable')
+    return
+  }
+  try {
+    fm.readText({
+      uri: '/common/dict/' + kind + '_' + c0 + '.txt',
+      success: function (d) { cb(null, d && d.text) },
+      fail: function (err, code) { cb(code) }
+    })
+  } catch (e) {
+    cb(e)
+  }
 }
 
 // 异步预载一个首字母的 一级桶 + 二级桶 + 元数据桶；已加载/加载中时立即回调

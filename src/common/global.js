@@ -2,27 +2,31 @@
 
 // 将通用方法挂载到global对象上，减少模块导入
 if (typeof global !== 'undefined') {
-  // 定时器管理器，用于清理所有定时器
+  // 定时器管理器，用于清理所有定时器（用数组替代 Set，兼容精简运行时）
   global.timerManager = {
-    timers: new Set(),
+    timers: [],
     
     setTimeout: function(callback, delay) {
       const timer = setTimeout(() => {
-        this.timers.delete(timer);
+        const i = this.timers.indexOf(timer);
+        if (i > -1) this.timers.splice(i, 1);
         callback();
       }, delay);
-      this.timers.add(timer);
+      this.timers.push(timer);
       return timer;
     },
     
     clearTimeout: function(timer) {
       clearTimeout(timer);
-      this.timers.delete(timer);
+      const i = this.timers.indexOf(timer);
+      if (i > -1) this.timers.splice(i, 1);
     },
     
     clearAllTimers: function() {
-      this.timers.forEach(timer => clearTimeout(timer));
-      this.timers.clear();
+      for (let i = 0; i < this.timers.length; i++) {
+        clearTimeout(this.timers[i]);
+      }
+      this.timers = [];
     }
   };
   
@@ -70,23 +74,9 @@ if (typeof global !== 'undefined') {
       return str.substring(start, start + length);
     },
     
-    // 安全的文件读取和内存释放
-    safeFileRead: async function(readFunction) {
-      let result = null;
-      try {
-        result = await readFunction();
-        return result;
-      } catch (e) {
-        console.error('文件读取错误:', e);
-        return null;
-      } finally {
-        // 确保及时释放内存
-        if (typeof global !== 'undefined' && global.runGC) {
-          setTimeout(() => global.runGC(), 100);
-        }
-      }
-    },
-    
+    // 安全的文件读取和内存释放（说明：不再提供 safeFileRead——该实现使用 async/await 语法，
+    // 低内存/精简设备（如小米手环10）的 JS 引擎不支持 async，模块加载即语法崩溃，故移除。
+    // 需要异步读文件的调用方直接使用回调风格即可）
     // 批量内存释放
     releaseMemory: function() {
       // 释放可能的内存引用

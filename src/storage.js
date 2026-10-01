@@ -1,188 +1,194 @@
 /**
- * 简化的存储管理器
- * 使用内存缓存 + 文件持久化的双重保障
+ * 存储管理器（基于 @system.storage 异步 API + 内存缓存同步兼容层）
+ * 说明：
+ *   - 不顶层 import @system.storage：低内存/精简设备（如小米手环10）可能缺失该系统模块，
+ *     顶层 import 会在模块加载时立即抛异常导致启动崩溃。改为惰性 require + try/catch 探测。
+ *   - @system.storage 仅提供异步 get/set/delete/clear，而 favorites.js / app.ux 依赖同步
+ *     getSync/setSync，故用内存缓存模拟：启动时 warmup 预读已知 key，getSync/setSync 直接
+ *     读写缓存，setSync 同时异步持久化。
+ *   - 存储模块缺失时：getSync/setSync 仍可用（仅内存缓存，不持久化），回调式 API 直接走
+ *     fail/complete，应用不崩溃。
+ * 全部为 ES5 风格，不依赖 class / async / Promise / Set，避免精简运行时崩溃。
  */
-import file from '@system.file'
 
-class StorageManager {
-  constructor() {
-    this.cache = {};
-    this.filePath = 'internal://files/storage-config.json';
-    this.initialized = false;
-  }
+// 已知存储 key（启动预读，保证 getSync 同步可用）
+var KNOWN_KEYS = ['favorites', 'manual_dictionary', 'ai_dictionary', 'ai_word_count', 'ui_style']
 
-  // 初始化存储
-  async init() {
-    if (this.initialized) return;
-    
-    try {
-      const data = await this.readFile();
-      this.cache = data || {};
-      this.initialized = true;
-      console.log('StorageManager初始化成功:', Object.keys(this.cache));
-    } catch (error) {
-      console.log('StorageManager初始化失败，使用空缓存:', error);
-      this.cache = {};
-      this.initialized = true;
+var _cache = {}
+
+// 惰性获取系统存储模块
+var _storageMod = null
+var _storageChecked = false
+function getStorageModule() {
+  if (_storageChecked) return _storageMod
+  _storageChecked = true
+  try {
+    if (typeof require === 'function') {
+      _storageMod = require('@system.storage')
     }
+  } catch (e) {
+    _storageMod = null
   }
+  return _storageMod
+}
 
-  // 读取文件
-  readFile() {
-    return new Promise((resolve, reject) => {
-      file.readText({
-        uri: this.filePath,
-        success: (data) => {
-          try {
-            resolve(JSON.parse(data.text));
-          } catch (e) {
-            resolve({});
-          }
+function warmup() {
+  var mod = getStorageModule()
+  if (!mod || typeof mod.get !== 'function') return
+  for (var i = 0; i < KNOWN_KEYS.length; i++) {
+    (function (key) {
+      try {
+        mod.get({
+          key: key,
+          success: function (data) { _cache[key] = data },
+          fail: function () {}
+        })
+      } catch (e) {}
+    })(KNOWN_KEYS[i])
+  }
+}
+
+function defaultValue(param) {
+  return (param && param.default !== undefined) ? param.default : ''
+}
+
+function doFail(param, err) {
+  if (param && param.fail) {
+    try { param.fail(err) } catch (e) {}
+  }
+  if (param && param.complete) {
+    try { param.complete() } catch (e) {}
+  }
+}
+
+function doSuccess(param, value) {
+  if (param && param.success) {
+    try { param.success(value) } catch (e) {}
+  }
+  if (param && param.complete) {
+    try { param.complete() } catch (e) {}
+  }
+}
+
+var storageFile = {
+  // 同步读（内存缓存，未就绪返回默认值）
+  getSync: function (param) {
+    var key = param && param.key
+    return _cache[key] === undefined ? defaultValue(param) : _cache[key]
+  },
+
+  // 同步写（写缓存 + 异步持久化；存储模块缺失时仅写缓存）
+  setSync: function (param) {
+    try {
+      if (param) _cache[param.key] = param.value
+      var mod = getStorageModule()
+      if (mod && typeof mod.set === 'function') {
+        mod.set({ key: param.key, value: param.value, fail: function () {} })
+      }
+      return true
+    } catch (e) {
+      return false
+    }
+  },
+
+  get: function (param) {
+    try {
+      var mod = getStorageModule()
+      if (!mod || typeof mod.get !== 'function') {
+        // 降级：直接返回内存缓存
+        var value = this.getSync(param)
+        _cache[param.key] = value
+        doSuccess(param, value)
+        return
+      }
+      mod.get({
+        key: param.key,
+        success: function (data) {
+          _cache[param.key] = data
+          doSuccess(param, data)
         },
-        fail: () => {
-          resolve({});
+        fail: function () {
+          var v = _cache[param.key]
+          if (v === undefined) v = defaultValue(param)
+          doSuccess(param, v)
         }
-      });
-    });
-  }
+      })
+    } catch (e) {
+      doFail(param, e)
+    }
+  },
 
-  // 写入文件
-  writeFile(data) {
-    return new Promise((resolve, reject) => {
-      file.writeText({
-        uri: this.filePath,
-        text: JSON.stringify(data, null, 2),
-        success: () => {
-          console.log('StorageManager: 文件写入成功');
-          resolve();
+  set: function (param) {
+    try {
+      var mod = getStorageModule()
+      if (!mod || typeof mod.set !== 'function') {
+        // 降级：仅写内存缓存
+        if (param) _cache[param.key] = param.value
+        doSuccess(param)
+        return
+      }
+      mod.set({
+        key: param.key,
+        value: param.value,
+        success: function () {
+          if (param) _cache[param.key] = param.value
+          doSuccess(param)
         },
-        fail: (error, code) => {
-          console.log('StorageManager: 文件写入失败', code);
-          reject(error);
+        fail: function (err) {
+          doFail(param, err)
         }
-      });
-    });
-  }
-
-  // 获取值
-  async get(key, defaultValue = '') {
-    await this.init();
-    const value = this.cache[key];
-    console.log(`StorageManager.get: ${key} = ${value || defaultValue}`);
-    return value || defaultValue;
-  }
-
-  // 设置值
-  async set(key, value) {
-    await this.init();
-    this.cache[key] = value;
-    console.log(`StorageManager.set: ${key} = ${value}`);
-    
-    try {
-      await this.writeFile(this.cache);
-      console.log(`StorageManager: ${key} 保存成功`);
-      return true;
-    } catch (error) {
-      console.log(`StorageManager: ${key} 保存失败`, error);
-      return false;
+      })
+    } catch (e) {
+      doFail(param, e)
     }
-  }
+  },
 
-  // 删除键
-  async delete(key) {
-    await this.init();
-    delete this.cache[key];
-    console.log(`StorageManager.delete: ${key}`);
-    
+  delete: function (param) {
     try {
-      await this.writeFile(this.cache);
-      return true;
-    } catch (error) {
-      console.log(`StorageManager: ${key} 删除失败`, error);
-      return false;
+      var mod = getStorageModule()
+      if (!mod || typeof mod.delete !== 'function') {
+        delete _cache[param.key]
+        doSuccess(param)
+        return
+      }
+      mod.delete({
+        key: param.key,
+        success: function () {
+          delete _cache[param.key]
+          doSuccess(param)
+        },
+        fail: function (err) {
+          doFail(param, err)
+        }
+      })
+    } catch (e) {
+      doFail(param, e)
     }
-  }
+  },
 
-  // 清空所有数据
-  async clear() {
-    await this.init();
-    this.cache = {};
-    
+  clear: function (param) {
     try {
-      await this.writeFile(this.cache);
-      console.log('StorageManager: 清空成功');
-      return true;
-    } catch (error) {
-      console.log('StorageManager: 清空失败', error);
-      return false;
+      var mod = getStorageModule()
+      if (!mod || typeof mod.clear !== 'function') {
+        for (var k in _cache) delete _cache[k]
+        doSuccess(param)
+        return
+      }
+      mod.clear({
+        success: function () {
+          for (var k in _cache) delete _cache[k]
+          doSuccess(param)
+        },
+        fail: function (err) {
+          doFail(param, err)
+        }
+      })
+    } catch (e) {
+      doFail(param, e)
     }
   }
 }
 
-// 创建单例实例
-const storageManager = new StorageManager();
+warmup()
 
-// 导出兼容旧API的接口
-const storageFile = {
-  get: async (param) => {
-    try {
-      const value = await storageManager.get(param.key, param.default);
-      if (param.success) param.success(value);
-      if (param.complete) param.complete();
-    } catch (error) {
-      console.log('storage.get失败:', error);
-      if (param.fail) param.fail(error);
-      if (param.complete) param.complete();
-    }
-  },
-  
-  set: async (param) => {
-    try {
-      const success = await storageManager.set(param.key, param.value);
-      if (success) {
-        if (param.success) param.success();
-      } else {
-        if (param.fail) param.fail();
-      }
-      if (param.complete) param.complete();
-    } catch (error) {
-      console.log('storage.set失败:', error);
-      if (param.fail) param.fail(error);
-      if (param.complete) param.complete();
-    }
-  },
-  
-  delete: async (param) => {
-    try {
-      const success = await storageManager.delete(param.key);
-      if (success) {
-        if (param.success) param.success();
-      } else {
-        if (param.fail) param.fail();
-      }
-      if (param.complete) param.complete();
-    } catch (error) {
-      console.log('storage.delete失败:', error);
-      if (param.fail) param.fail(error);
-      if (param.complete) param.complete();
-    }
-  },
-  
-  clear: async (param) => {
-    try {
-      const success = await storageManager.clear();
-      if (success) {
-        if (param.success) param.success();
-      } else {
-        if (param.fail) param.fail();
-      }
-      if (param.complete) param.complete();
-    } catch (error) {
-      console.log('storage.clear失败:', error);
-      if (param.fail) param.fail(error);
-      if (param.complete) param.complete();
-    }
-  }
-};
-
-export default storageFile;
+export default storageFile

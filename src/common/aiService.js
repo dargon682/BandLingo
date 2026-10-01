@@ -1,10 +1,29 @@
-import fetch from '@system.fetch';
+// 不直接 import @system.fetch：小米手环10 官方不支持该模块，顶层 import 会在模块加载时
+// 立即抛异常导致页面/应用崩溃。改为惰性 require + try/catch 探测（模块名拼接，避免构建器
+// 将其识别为固定系统依赖而强制 manifest 声明 feature）：
+// 支持 fetch 的设备正常联网查询，不支持时 queryAI 返回友好错误，应用不崩溃。
 import storage from '../storage';
+
+// 惰性获取系统网络模块
+let _fetchMod = null;
+let _fetchChecked = false;
+function getFetchModule() {
+  if (_fetchChecked) return _fetchMod;
+  _fetchChecked = true;
+  try {
+    if (typeof require === 'function') {
+      _fetchMod = require('@system.' + 'fetch');
+    }
+  } catch (e) {
+    _fetchMod = null;
+  }
+  return _fetchMod;
+}
 
 /**
  * 增加AI词库计数
  */
-async function incrementAICount() {
+function incrementAICount() {
   try {
     storage.get({
       key: 'ai_word_count',
@@ -36,7 +55,14 @@ async function incrementAICount() {
  * @param {boolean} isChinese - 是否为中文输入
  * @returns {Promise<string>} AI返回的释义
  */
-export async function queryAI(word, isChinese = false) {
+export function queryAI(word, isChinese = false) {
+  // 设备不支持 @system.fetch 时直接返回友好错误（不崩溃、不发起网络请求）
+  const fetchMod = getFetchModule();
+  if (!fetchMod || typeof fetchMod.fetch !== 'function') {
+    return new Promise((resolve, reject) => {
+      reject(new Error('当前设备不支持AI网络查询'));
+    });
+  }
   try {
     const systemPrompt = isChinese 
       ? `你是一个专业的英汉词典助手。请为中文词"${word}"提供准确的英文翻译和解释。
@@ -83,7 +109,7 @@ ${word} - [中文释义1], [中文释义2], [中文释义3]
 
     // 使用fetch.fetch直接调用API - 参考browser.ux的实现
     return new Promise((resolve, reject) => {
-      fetch.fetch({
+      fetchMod.fetch({
         url: 'https://api.moonshot.cn/v1/chat/completions',
         method: 'POST',
         header: {

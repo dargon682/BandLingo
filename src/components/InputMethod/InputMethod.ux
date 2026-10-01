@@ -89,8 +89,25 @@
 </template>
 
 <script>
-import vibrator from "@system.vibrator";
+// 说明：不直接 import @system.vibrator——低内存/精简设备（如小米手环10）可能缺失该系统模块，
+// 顶层 import 会在组件模块加载时立即抛异常导致页面崩溃。改为惰性 require + try/catch 探测。
 import { SimpleInputMethod } from "./assets/dicUtil.js";
+
+// 惰性获取系统震动模块
+let _vibratorMod = null;
+let _vibratorChecked = false;
+function getVibratorModule() {
+  if (_vibratorChecked) return _vibratorMod;
+  _vibratorChecked = true;
+  try {
+    if (typeof require === 'function') {
+      _vibratorMod = require('@system.vibrator');
+    }
+  } catch (e) {
+    _vibratorMod = null;
+  }
+  return _vibratorMod;
+}
 
 export default {
   props: {
@@ -127,7 +144,12 @@ export default {
 
   onVibrate() {
     if (this.vibratemode) {
-      vibrator.vibrate({ mode: this.vibratemode });
+      const vm = getVibratorModule();
+      if (vm && typeof vm.vibrate === 'function') {
+        try {
+          vm.vibrate({ mode: this.vibratemode });
+        } catch (e) {}
+      }
     }
   },
 

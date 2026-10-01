@@ -69,10 +69,22 @@
   </div>
 </template>
 
-<script>
-import storage from "../../storage"
-import router from "@system.router"
-
+<script>// 惰性获取系统路由模块：不顶层 import @system.router，避免精简设备模块缺失时页面加载崩溃
+var router = null;
+var _routerChecked = false;
+function getRouterModule() {
+  if (_routerChecked) return router;
+  _routerChecked = true;
+  try {
+    if (typeof require === 'function') {
+      router = require('@system.router');
+    }
+  } catch (e) {
+    router = null;
+  }
+  return router;
+}
+import storage from "../../storage";
 export default {
   data: {
     favoriteCount: 0,
@@ -86,85 +98,82 @@ export default {
     toastMessage: "",
     toastSuccess: true
   },
-
-  onInit() {
+  onInit: function onInit() {
     this.loadCounts();
   },
-
-  onShow() {
+  onShow: function onShow() {
     this.loadCounts();
   },
-
-  loadCounts() {
+  loadCounts: function loadCounts() {
+    var _this = this;
     storage.get({
       key: 'favorites',
       default: '',
-      success: (data) => {
+      success: function success(data) {
         if (data && data !== '') {
           try {
-            const arr = JSON.parse(data);
-            this.favoriteCount = Array.isArray(arr) ? arr.length : 0;
+            var arr = JSON.parse(data);
+            _this.favoriteCount = Array.isArray(arr) ? arr.length : 0;
           } catch (e) {
-            this.favoriteCount = 0;
+            _this.favoriteCount = 0;
           }
         } else {
-          this.favoriteCount = 0;
+          _this.favoriteCount = 0;
         }
       },
-      fail: () => {
-        this.favoriteCount = 0;
+      fail: function fail() {
+        _this.favoriteCount = 0;
       }
     });
-
     storage.get({
       key: 'manual_dictionary',
       default: '',
-      success: (data) => {
+      success: function success(data) {
         if (data && data !== '') {
           try {
-            const dict = JSON.parse(data);
-            this.manualDictCount = Object.keys(dict).length;
+            var dict = JSON.parse(data);
+            _this.manualDictCount = Object.keys(dict).length;
           } catch (e) {
-            this.manualDictCount = 0;
+            _this.manualDictCount = 0;
           }
         } else {
-          this.manualDictCount = 0;
+          _this.manualDictCount = 0;
         }
       },
-      fail: () => {
-        this.manualDictCount = 0;
+      fail: function fail() {
+        _this.manualDictCount = 0;
       }
     });
-
     storage.get({
       key: 'ai_dictionary',
       default: '',
-      success: (data) => {
+      success: function success(data) {
         if (data && data !== '') {
           try {
-            const dict = JSON.parse(data);
-            this.aiDictCount = Object.keys(dict).length;
+            var dict = JSON.parse(data);
+            _this.aiDictCount = Object.keys(dict).length;
           } catch (e) {
-            this.aiDictCount = 0;
+            _this.aiDictCount = 0;
           }
         } else {
-          this.aiDictCount = 0;
+          _this.aiDictCount = 0;
         }
       },
-      fail: () => {
-        this.aiDictCount = 0;
+      fail: function fail() {
+        _this.aiDictCount = 0;
       }
     });
   },
-
-  showToastMessage(msg, success) {
+  showToastMessage: function showToastMessage(msg, success) {
+    var _this2 = this;
     this.toastMessage = msg;
     this.toastSuccess = success;
     this.showToast = true;
-    setTimeout(() => { this.showToast = false; }, 2000);
+    setTimeout(function () {
+      _this2.showToast = false;
+    }, 2000);
   },
-
-  clearFavorites() {
+  clearFavorites: function clearFavorites() {
     if (this.favoriteCount === 0) {
       this.showToastMessage("收藏夹为空", false);
       return;
@@ -174,8 +183,7 @@ export default {
     this.pendingAction = "favorites";
     this.showConfirm = true;
   },
-
-  clearManualDict() {
+  clearManualDict: function clearManualDict() {
     if (this.manualDictCount === 0) {
       this.showToastMessage("手动词库为空", false);
       return;
@@ -185,8 +193,7 @@ export default {
     this.pendingAction = "manualDict";
     this.showConfirm = true;
   },
-
-  clearAiDict() {
+  clearAiDict: function clearAiDict() {
     if (this.aiDictCount === 0) {
       this.showToastMessage("AI查词记录为空", false);
       return;
@@ -196,79 +203,83 @@ export default {
     this.pendingAction = "aiDict";
     this.showConfirm = true;
   },
-
-  clearAllData() {
+  clearAllData: function clearAllData() {
     this.confirmTitle = "清除所有数据";
     this.confirmMessage = "将清除收藏夹、手动词库、AI查词记录等所有数据，此操作不可恢复。";
     this.pendingAction = "all";
     this.showConfirm = true;
   },
-
-  cancelAction() {
+  cancelAction: function cancelAction() {
     this.showConfirm = false;
     this.pendingAction = "";
   },
-
-  confirmAction() {
-    const action = this.pendingAction;
+  confirmAction: function confirmAction() {
+    var _this3 = this;
+    var action = this.pendingAction;
     this.showConfirm = false;
     this.pendingAction = "";
-
     if (action === "favorites") {
       storage.delete({
         key: 'favorites',
-        success: () => {
-          this.favoriteCount = 0;
-          this.showToastMessage("收藏夹已清空", true);
+        success: function success() {
+          _this3.favoriteCount = 0;
+          _this3.showToastMessage("收藏夹已清空", true);
         },
-        fail: () => { this.showToastMessage("清空失败", false); }
+        fail: function fail() {
+          _this3.showToastMessage("清空失败", false);
+        }
       });
     } else if (action === "manualDict") {
       storage.delete({
         key: 'manual_dictionary',
-        success: () => {
-          this.manualDictCount = 0;
-          this.showToastMessage("手动词库已清空", true);
+        success: function success() {
+          _this3.manualDictCount = 0;
+          _this3.showToastMessage("手动词库已清空", true);
         },
-        fail: () => { this.showToastMessage("清空失败", false); }
+        fail: function fail() {
+          _this3.showToastMessage("清空失败", false);
+        }
       });
     } else if (action === "aiDict") {
       storage.delete({
         key: 'ai_dictionary',
-        success: () => {
-          this.aiDictCount = 0;
-          this.showToastMessage("AI查词记录已清空", true);
+        success: function success() {
+          _this3.aiDictCount = 0;
+          _this3.showToastMessage("AI查词记录已清空", true);
         },
-        fail: () => { this.showToastMessage("清空失败", false); }
+        fail: function fail() {
+          _this3.showToastMessage("清空失败", false);
+        }
       });
     } else if (action === "all") {
       storage.delete({
         key: 'favorites',
-        success: () => {
-          this.favoriteCount = 0;
+        success: function success() {
+          _this3.favoriteCount = 0;
         }
       });
       storage.delete({
         key: 'manual_dictionary',
-        success: () => {
-          this.manualDictCount = 0;
+        success: function success() {
+          _this3.manualDictCount = 0;
         }
       });
       storage.delete({
         key: 'ai_dictionary',
-        success: () => {
-          this.aiDictCount = 0;
+        success: function success() {
+          _this3.aiDictCount = 0;
         }
       });
       this.showToastMessage("所有数据已清除", true);
     }
   },
-
-  goBack() {
-    router.back();
+  goBack: function goBack() {
+    var routerMod = getRouterModule();
+    if (routerMod && typeof routerMod.back === 'function') {
+      routerMod.back();
+    }
   }
-}
-</script>
+};</script>
 
 <style>
 .storage-page {

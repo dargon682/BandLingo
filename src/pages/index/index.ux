@@ -47,64 +47,75 @@
 </template>
 
 <script>
-import router from "@system.router"
-
+// 惰性获取系统路由模块：不顶层 import @system.router——
+// 精简设备（如小米手环10）若模块缺失，顶层 import 会在页面加载时立即抛异常导致启动崩溃。
+var router = null;
+var _routerChecked = false;
+function getRouterModule() {
+  if (_routerChecked) return router;
+  _routerChecked = true;
+  try {
+    if (typeof require === 'function') {
+      router = require('@system.router');
+    }
+  } catch (e) {
+    router = null;
+  }
+  return router;
+}
 export default {
   data: {
     searchWord: "",
     keyboardVisible: false
   },
-
-  onInit() {
-    this.searchWord = ""
-    this.keyboardVisible = false
+  onInit: function onInit() {
+    this.searchWord = "";
+    this.keyboardVisible = false;
   },
-
-  showKeyboard() {
-    this.keyboardVisible = true
+  showKeyboard: function showKeyboard() {
+    this.keyboardVisible = true;
   },
-
-  hideKeyboard() {
-    this.keyboardVisible = false
+  hideKeyboard: function hideKeyboard() {
+    this.keyboardVisible = false;
   },
-
-  handleInputKeyDown(e) {
-    const content = e.detail ? e.detail.content : e.content;
+  handleInputKeyDown: function handleInputKeyDown(e) {
+    var content = e.detail ? e.detail.content : e.content;
     if (content && this.searchWord.length < 20) {
       this.searchWord += content;
     }
   },
-
-  handleInputComplete(e) {
-    const content = e.detail ? e.detail.content : e.content;
+  handleInputComplete: function handleInputComplete(e) {
+    var content = e.detail ? e.detail.content : e.content;
     if (content && this.searchWord.length < 20) {
       this.searchWord += content;
     }
   },
-
-  handleInputDelete() {
+  handleInputDelete: function handleInputDelete() {
     if (this.searchWord.length > 0) {
       this.searchWord = this.searchWord.slice(0, -1);
     }
   },
-
-  handleSearch() {
-    const word = this.searchWord ? this.searchWord.trim() : "";
+  handleSearch: function handleSearch() {
+    var word = this.searchWord ? this.searchWord.trim() : "";
     console.log('=== 搜索按钮被点击 ===');
     console.log('当前搜索词:', this.searchWord);
     console.log('处理后的搜索词:', word);
-    
     if (word) {
       console.log('执行搜索，搜索词:', word);
       try {
         // 根据官方文档，使用以 '/' 开头的应用内页面路径
-        router.push({
-          uri: '/pages/searchResult',
-          params: { 
-            word: word 
-          }
-        });
-        console.log('路由跳转调用成功');
+        var routerMod = getRouterModule();
+        if (routerMod && typeof routerMod.push === 'function') {
+          routerMod.push({
+            uri: '/pages/searchResult',
+            params: {
+              word: word
+            }
+          });
+          console.log('路由跳转调用成功');
+        } else {
+          console.error('路由模块不可用');
+        }
       } catch (error) {
         console.error('路由跳转失败:', error);
       }
@@ -112,29 +123,32 @@ export default {
       console.log('搜索词为空，不执行搜索');
     }
   },
-
-  goToFavorites() {
+  goToFavorites: function goToFavorites() {
     console.log('=== 开始跳转到收藏夹 ===');
     try {
-      router.push({
-        uri: '/pages/favorites'
-      });
-      console.log('收藏夹跳转调用成功');
+      var routerMod = getRouterModule();
+      if (routerMod && typeof routerMod.push === 'function') {
+        routerMod.push({
+          uri: '/pages/favorites'
+        });
+        console.log('收藏夹跳转调用成功');
+      } else {
+        console.error('路由模块不可用');
+      }
     } catch (error) {
       console.error('收藏夹跳转失败:', error);
     }
     console.log('=== 收藏夹跳转方法调用完成 ===');
   },
-
-
-
-  goToSettings() {
-    router.push({
-      uri: '/pages/settings'
-    });
+  goToSettings: function goToSettings() {
+    var routerMod = getRouterModule();
+    if (routerMod && typeof routerMod.push === 'function') {
+      routerMod.push({
+        uri: '/pages/settings'
+      });
+    }
   },
-
-  onDestroy() {
+  onDestroy: function onDestroy() {
     // 页面销毁时清理数据，避免内存泄漏
     this.searchWord = "";
     this.keyboardVisible = false;
@@ -143,8 +157,7 @@ export default {
       global.runGC();
     }
   }
-}
-</script>
+};</script>
 
 <style>
 .dict-page {

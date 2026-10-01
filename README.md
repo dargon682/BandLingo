@@ -17,7 +17,9 @@
 | 二级（`dict/full_*.txt`） | 16.5 万全量词条 | 按首字母分桶**资源文件**，按需异步读取 + LRU 缓存（最多 3 桶） |
 | 元数据（`dict/meta_*.txt`） | 词性/考段 | 按首字母分桶**资源文件**，懒解析 + LRU 缓存（最多 6 桶） |
 
-总词条量约 **22.5 万**。词库全部拆分为 78 个按首字母分桶的资源文件（`src/common/dict/`），**启动不挂载任何大词库对象**（app.jsc 由 14MB → 12KB），从根源上避免低内存设备启动 OOM 崩溃/反复重启/系统异常；运行时仅解析当前查询首字母的 1~3 个桶（峰值约 10~16MB），配合 LRU 自动逐出最旧桶。桶文件为包内资源，经 `@system.fetch` 相对路径按需异步读取（`@system.file` 仅能访问沙箱数据目录，不可读包内资源）。
+总词条量约 **22.5 万**。词库全部拆分为 78 个按首字母分桶的资源文件（`src/common/dict/`），**启动不挂载任何大词库对象**（app.jsc 由 14MB → 12KB），从根源上避免低内存设备启动 OOM 崩溃/反复重启/系统异常；运行时仅解析当前查询首字母的 1~3 个桶（峰值约 10~16MB），配合 LRU 自动逐出最旧桶。桶文件为包内资源，经 `@system.file.readText` 按应用资源路径（`/common/dict/*.txt`）按需异步读取。
+
+> 兼容性说明：小米手环10 官方不支持 `@system.fetch`，故**所有系统模块（fetch/file/storage/vibrator/router）一律惰性 `require` + try/catch 探测**——模块缺失时仅功能降级，绝不因顶层 `import` 崩溃；同时代码中不保留 `async/await` 语法与 `new Set`（精简运行时高危），全部改为回调 / Promise 链 / 数组实现。**精简运行时可能没有 `console` 全局对象**（任何 `console.*` 调用都会在启动时抛 TypeError 导致崩溃/系统异常），已采取双保险：① `global.js` 顶部 ES5 版 console Polyfill（缺失时创建安全空实现）；② 构建参数 `--drop-console=true`（SWC 压缩时移除全部 `console.*` 调用）。
 
 ### 2. 词条分类（词性 × 考段）
 - **词性 14 类**：名词 / 动词 / 形容词 / 副词 / 连词 / 介词 / 代词 / 数词 / 缩写 / 短语 / 叹词 / 助动词 / 冠词等
@@ -110,6 +112,7 @@ BandLingo/
 
 | 版本 | 说明 |
 |------|------|
+| 1.1-beta（本次更新） | 追加根治启动崩溃：构建时 `--drop-console=true` 移除全部 `console.*` 调用 + `global.js` 内置 ES5 console Polyfill（消除精简运行时无 console 导致的启动 TypeError）；`@system.router` 在 index / searchResult / storage 页面全部惰性化（消除顶层 import 崩溃风险）；所有页面 jsc 经校验无 console 残留，app.jsc 仅 8KB |
 | 1.1-beta | 修复反复启动崩溃/系统异常（根治）：一级/二级词库与元数据全部资源文件化（78 桶），启动不再挂载任何大词库对象（app.jsc 14MB→12KB），按首字母异步按需读桶 + LRU 缓存（tier1 4 桶 / full 3 桶 / meta 6 桶）；新增词条分类（词性 14 类 × 考段 4 档）与筛选式检索；检索逻辑全面优化（桶内前缀二分、LRU 缓存、错拼纠错、惰性分页）；公共模块收敛（favorites / filterOptions / uiTheme 单一事实来源）；详情页展示词性/考段；UI 一致性优化 |
 | 1.0.x | 双级离线词库与基础检索、收藏、生词本、学习统计等核心功能 |
 
